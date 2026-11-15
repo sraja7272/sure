@@ -555,7 +555,6 @@ class SessionsController < ApplicationController
       provider = sso_auto_redirect_provider
       return if provider.nil? || flash[:alert].present?
 
-      flash.keep
       @provider = provider[:name].to_s
       render :mobile_sso_start, layout: false
     end

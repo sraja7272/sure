@@ -16,8 +16,6 @@ zh-TW:
       sso_provider_unavailable: SSO 供應商目前無法使用，請稍後再試或聯絡管理員。
       sso_invalid_response: 從 SSO 供應商收到的回應無效，請再試一次。
       sso_failed: 單一登入驗證失敗，請再試一次。
-    mobile_sso_start:
-      redirecting_html: 正在導向登入頁面... 如果沒有自動導向，請<a href="%{url}">按這裡</a>。
     new:
       email: 電子郵件地址
       email_placeholder: you@example.com

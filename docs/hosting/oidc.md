@@ -294,6 +294,8 @@ Behavior:
 - The create-account page and password sign-up are turned off; both lead to the provider. New accounts are created on return from the provider, subject to `AUTH_JIT_MODE` and `ALLOWED_OIDC_DOMAINS`, and pending invitations are matched by email.
 - When an SSO attempt comes back to Sure as a failure (Sure cannot reach the provider, sign-in cancelled, account not allowed), the sign-in page is shown with the error instead of redirecting again. What it offers follows the local login flags above, so keep `AUTH_LOCAL_LOGIN_ENABLED` or `AUTH_LOCAL_ADMIN_OVERRIDE_ENABLED` on if you want a password fallback during a provider outage.
 - If Sure can reach the provider but the browser cannot, or the provider's own login page is broken, nothing comes back to Sure and sign-in keeps handing off. Set `AUTH_SSO_AUTO_REDIRECT=false` to get the sign-in form back in that case.
+- Invitations are honoured only when the email the provider reports matches the invited email; the invitation link's token is not used. Someone who signs in with a different email gets a new family (or is blocked under `AUTH_JIT_MODE=link_only`).
+- The onboarding settings do not gate provider sign-up: accounts are still created when onboarding is closed, and the invite-only default family is not applied. Use `AUTH_JIT_MODE` and `ALLOWED_OIDC_DOMAINS` to control who can get an account.
 - Signing out returns to the provider. If the provider session is still active, the user is signed straight back in.
 - Mobile and desktop app sign-in are unaffected.
 

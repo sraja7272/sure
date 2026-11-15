@@ -16,8 +16,6 @@ tr:
         tekrar deneyin.
       sso_provider_unavailable: SSO sağlayıcısı şu anda kullanılamıyor. Lütfen daha
         sonra tekrar deneyin veya bir yöneticiyle iletişime geçin.
-    mobile_sso_start:
-      redirecting_html: Girişe yönlendiriliyorsunuz... Yönlendirilmezseniz <a href="%{url}">buraya
         tıklayın</a>.
     new:
       demo_banner_message: Bu bir demo ortamıdır. Kolaylığınız için giriş bilgileri

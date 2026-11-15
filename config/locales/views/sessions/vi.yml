@@ -16,8 +16,6 @@ vi:
       sso_provider_unavailable: "Nhà cung cấp SSO hiện không khả dụng. Vui lòng thử lại sau hoặc liên hệ quản trị viên."
       sso_invalid_response: "Nhận được phản hồi không hợp lệ từ nhà cung cấp SSO. Vui lòng thử lại."
       sso_failed: "Xác thực SSO thất bại. Vui lòng thử lại."
-    mobile_sso_start:
-      redirecting_html: "Đang chuyển hướng để đăng nhập... <a href=\"%{url}\">Nhấn vào đây</a> nếu không được chuyển hướng."
     new:
       email: Địa chỉ email
       email_placeholder: ban@example.com

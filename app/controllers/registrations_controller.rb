@@ -125,7 +125,6 @@ class RegistrationsController < ApplicationController
     def redirect_to_sso_sign_in
       return unless sso_auto_redirect_provider
 
-      flash.keep
       redirect_to new_session_path
     end
 

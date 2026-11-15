@@ -13,13 +13,6 @@ module SsoAutoRedirectable
     def sso_auto_redirect_provider
       return @sso_auto_redirect_provider if defined?(@sso_auto_redirect_provider)
 
-      @sso_auto_redirect_provider = demo_host? ? nil : AuthConfig.auto_redirect_provider
-    end
-
-    def demo_host?
-      demo = Rails.application.config_for(:demo)
-      demo.present? && demo["hosts"].present? && demo["hosts"].include?(request.host)
-    rescue RuntimeError, Errno::ENOENT, Psych::SyntaxError
-      false
+      @sso_auto_redirect_provider = demo_host_match?(demo_config) ? nil : AuthConfig.auto_redirect_provider
     end
 end
