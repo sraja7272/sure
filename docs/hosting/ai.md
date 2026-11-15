@@ -1287,7 +1287,9 @@ Sure records which person each AI request and Plaid connection is charged to:
   its category or merchant list once with each. PDF imports go to the person
   who uploaded the file, or to whoever restarted processing of a file uploaded
   before. Anything else, such as work with no person behind it or on an
-  account without an owner, is **Unassigned**.
+  account without an owner, is **Unassigned**. Shadow comparison runs of a
+  second categorization provider are not charged to a person and appear as
+  Unassigned.
 - **Plaid** has a monthly ledger with one row per connection per month. A row
   lists the products Plaid billed for that connection and how many transactions
   refresh calls it made, and is kept after the connection is deleted. Each row
@@ -1318,6 +1320,12 @@ upgrade that added this report: AI usage recorded earlier shows as Unassigned,
 and the Plaid ledger starts with the connections that existed at that point.
 Deleting a family deletes its usage rows, so a month in which a family was
 deleted reports less than the Plaid and AI provider invoices for that month.
+
+Past months are not frozen. Plaid cost for every month is priced at the
+currently saved rates, so changing the rates reprices earlier months and a CSV
+exported before the change will no longer match; if you bill from the CSV,
+export each month before changing rates. Deleting a user moves their past AI
+and Plaid usage to Unassigned, including in months already reported.
 
 ## Troubleshooting
 

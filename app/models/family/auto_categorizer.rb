@@ -180,6 +180,10 @@ class Family::AutoCategorizer
     # categorize a whole batch in one request — sampling individual rows would
     # not reduce the number of calls. Any failure is swallowed: a diagnostic
     # must never break the categorization it is observing.
+    #
+    # One request for the whole batch with no user: its answers are never
+    # applied, so its usage is not charged to any account owner and is
+    # reported as unassigned.
     def run_shadow(categories_input)
       rate = family.effective_categorization_shadow_rate
       return nil unless rate.positive?
@@ -190,7 +194,12 @@ class Family::AutoCategorizer
       end
       return nil if provider.nil? || provider.class == categorization_provider.class
 
-      response = auto_categorize_by_owner(provider, categories_input)
+      response = provider.auto_categorize(
+        transactions: transactions_input(scope),
+        user_categories: categories_input,
+        family: family,
+        user: nil
+      )
 
       return nil unless response.success?
 

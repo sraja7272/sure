@@ -480,23 +480,34 @@ class Family::AutoCategorizerTest < ActiveSupport::TestCase
     assert_in_delta 0.88, comparison.shadow_confidence, 0.001
   end
 
-  test "the shadow provider is charged per account owner too" do
+  test "the shadow provider is one request charged to no one" do
+    # Its answers are never applied, so no account owner is charged for it.
     @family.update!(categorization_shadow_rate: 1.0)
     @account.update!(owner: users(:family_member))
-    txn = create_transaction(account: @account, name: "Blue Bottle Coffee").transaction
+    admin_account = @family.accounts.create!(name: "Admin", balance: 0, currency: "USD", accountable: Depository.new, owner: users(:family_admin))
+    member_txn = create_transaction(account: @account, name: "Blue Bottle Coffee").transaction
+    admin_txn = create_transaction(account: admin_account, name: "Starbucks").transaction
     category = @family.categories.create!(name: "Coffee")
 
     openai = Provider::Openai.allocate
     Provider::Registry.stubs(:preferred_llm_provider).returns(openai)
-    openai.expects(:auto_categorize).with { |**kwargs| kwargs[:user] == users(:family_member) }
-          .returns(provider_success_response([ AutoCategorization.new(transaction_id: txn.id, category_name: category.name) ])).once
+    [ [ users(:family_member), member_txn ], [ users(:family_admin), admin_txn ] ].each do |owner, txn|
+      openai.expects(:auto_categorize)
+            .with { |**kwargs| kwargs[:user] == owner && kwargs[:transactions].map { |t| t[:id] } == [ txn.id ] }
+            .returns(provider_success_response([ AutoCategorization.new(transaction_id: txn.id, category_name: category.name) ]))
+            .once
+    end
 
     jev = Provider::Jev.allocate
     Provider::Registry.stubs(:get_provider).with(:jev).returns(jev)
-    jev.expects(:auto_categorize).with { |**kwargs| kwargs[:user] == users(:family_member) }
-       .returns(provider_success_response([])).once
+    jev.expects(:auto_categorize)
+       .with { |**kwargs| kwargs[:user].nil? && kwargs[:transactions].map { |t| t[:id] }.sort == [ member_txn.id, admin_txn.id ].sort }
+       .returns(provider_success_response([]))
+       .once
 
-    Family::AutoCategorizer.new(@family, transaction_ids: [ txn.id ]).auto_categorize
+    assert_difference "CategorizationComparison.count", 2 do
+      Family::AutoCategorizer.new(@family, transaction_ids: [ member_txn.id, admin_txn.id ]).auto_categorize
+    end
   end
 
   test "does not score a missing shadow answer as agreement" do

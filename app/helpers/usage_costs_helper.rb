@@ -1,7 +1,11 @@
 module UsageCostsHelper
   # Usage costs are recorded in USD whatever the family's currency. AI calls
-  # often cost fractions of a cent, so their figures keep four places.
-  def format_usage_cost(amount, precision: 2)
+  # often cost fractions of a cent, so their figures pass four places. Other
+  # figures use two places, or four when they hold a fraction of a cent, so a
+  # total that is mostly AI cost never rounds away to $0.00.
+  def format_usage_cost(amount, precision: nil)
+    amount = amount.to_d
+    precision ||= amount.round(2) == amount ? 2 : 4
     format_money(Money.new(amount, "USD"), precision: precision)
   end
 

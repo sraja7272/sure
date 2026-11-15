@@ -39,6 +39,21 @@ class Admin::UsageCostsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "Attribution to people"
   end
 
+  test "a sub-cent total is not rounded to zero" do
+    LlmUsage.create!(
+      family: @member.family, user: @member, provider: "openai", model: "gpt-4.1", operation: "chat",
+      prompt_tokens: 10, completion_tokens: 5, total_tokens: 15, estimated_cost: "0.004",
+      created_at: Time.zone.local(2026, 9, 15, 12)
+    )
+    sign_in @super_admin
+
+    get admin_usage_costs_path(month: "2026-09")
+
+    assert_equal "$0.0040", summary_card_value(I18n.t("usage_costs.summary.total"))
+    assert_equal "$0.0040", last_cell_of_row(@member.display_name)
+    assert_equal "$0.0040", last_cell_of_row(I18n.t("admin.usage_costs.show.subtotal"))
+  end
+
   test "choosing a month loads it without a submit button" do
     sign_in @super_admin
 
@@ -165,4 +180,16 @@ class Admin::UsageCostsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
     assert_equal 0, Setting.plaid_rate_transactions.to_d
   end
+
+  private
+    def summary_card_value(title)
+      css_select("h4").find { |heading| heading.text.strip == title }.next_element.text.strip
+    end
+
+    # The row's header cell holds the person's name (or "Subtotal"); the last
+    # cell is the Total column.
+    def last_cell_of_row(header_text)
+      row = css_select("tbody tr").find { |tr| tr.at_css("th")&.text&.include?(header_text) }
+      row.css("td").last.text.strip
+    end
 end

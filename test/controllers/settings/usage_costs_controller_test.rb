@@ -30,6 +30,20 @@ class Settings::UsageCostsControllerTest < ActionDispatch::IntegrationTest
     assert_select "section h3", text: I18n.t("settings.usage_costs.show.plaid_title")
   end
 
+  test "a sub-cent total is not rounded to zero" do
+    LlmUsage.create!(
+      family: @member.family, user: @member, provider: "openai", model: "gpt-4.1", operation: "chat",
+      prompt_tokens: 10, completion_tokens: 5, total_tokens: 15, estimated_cost: "0.004",
+      created_at: Time.zone.local(2026, 9, 15, 12)
+    )
+    sign_in @member
+
+    get settings_usage_costs_path(month: "2026-09")
+
+    total = css_select("h4").find { |heading| heading.text.strip == I18n.t("usage_costs.summary.total") }
+    assert_equal "$0.0040", total.next_element.text.strip
+  end
+
   test "choosing a month loads it without a submit button" do
     sign_in @member
 
