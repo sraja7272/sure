@@ -26,6 +26,8 @@ class Settings::UsageCostsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "$0.4321"
     assert_includes response.body, I18n.t("usage_costs.operations.auto_categorize")
     assert_includes response.body, "Member Credit Union"
+    assert_select "section h3", text: I18n.t("settings.usage_costs.show.ai_title")
+    assert_select "section h3", text: I18n.t("settings.usage_costs.show.plaid_title")
   end
 
   test "choosing a month loads it without a submit button" do
@@ -38,6 +40,20 @@ class Settings::UsageCostsControllerTest < ActionDispatch::IntegrationTest
       assert_select "input[type='month'][name='month'][value='2026-10'][data-auto-submit-form-target='auto']"
       assert_select "button[type='submit'], input[type='submit']", count: 0
     end
+  end
+
+  test "the current month is the UTC month, not the family's" do
+    @member.family.update!(timezone: "America/Los_Angeles")
+    sign_in @member
+
+    # 8pm on 31 October in Los Angeles is already November in UTC.
+    travel_to Time.utc(2026, 11, 1, 3) do
+      get settings_usage_costs_path
+    end
+
+    assert_response :success
+    assert_includes response.body, I18n.l(Date.new(2026, 11, 1), format: :month_year)
+    assert_select "input[type='month'][name='month'][value='2026-11'][max='2026-11']"
   end
 
   test "never shows another user's usage" do

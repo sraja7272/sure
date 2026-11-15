@@ -76,6 +76,51 @@ class Family::AutoCategorizerTest < ActiveSupport::TestCase
     assert_equal [ category ] * 3, [ admin_txn, member_txn, ownerless_txn ].map { |t| t.reload.category }
   end
 
+  test "a failed owner's request still applies the answers already paid for, and a retry skips them" do
+    @account.update!(owner: users(:family_admin))
+    member_account = @family.accounts.create!(name: "Member", balance: 0, currency: "USD", accountable: Depository.new, owner: users(:family_member))
+    admin_txn = create_transaction(account: @account, name: "McDonalds").transaction
+    member_txn = create_transaction(account: member_account, name: "Amazon").transaction
+    category = @family.categories.create!(name: "Test category")
+    ids = [ admin_txn.id, member_txn.id ]
+
+    # Answers the first owner's request and fails the second, whichever owner
+    # comes first.
+    requested = []
+    provider = Object.new
+    provider.define_singleton_method(:auto_categorize) do |transactions:, **|
+      requested << transactions.map { |t| t[:id] }
+      if requested.size == 1
+        Provider::Response.new(success?: true, error: nil,
+                               data: transactions.map { |t| AutoCategorization.new(transaction_id: t[:id], category_name: category.name) })
+      else
+        Provider::Response.new(success?: false, data: nil, error: Provider::Error.new("Rate limited"))
+      end
+    end
+    Provider::Registry.stubs(:preferred_llm_provider).returns(provider)
+
+    error = assert_raises(Family::AutoCategorizer::Error) do
+      Family::AutoCategorizer.new(@family, transaction_ids: ids).auto_categorize
+    end
+    assert_equal "Failed to auto-categorize transactions: Rate limited", error.message
+    assert_equal 2, requested.size
+
+    answered_id = requested.first.sole
+    unanswered_id = (ids - [ answered_id ]).sole
+    assert_equal category, Transaction.find(answered_id).category
+    assert_nil Transaction.find(unanswered_id).category
+    assert_equal [ answered_id ], DebugLogEntry.find_by!(message: "AI categorization stopped at a failed request").metadata["categorized_transaction_ids"]
+
+    @llm_provider.expects(:auto_categorize)
+                 .with { |**kwargs| kwargs[:transactions].map { |t| t[:id] } == [ unanswered_id ] }
+                 .returns(provider_success_response([ AutoCategorization.new(transaction_id: unanswered_id, category_name: category.name) ]))
+                 .once
+    Provider::Registry.stubs(:preferred_llm_provider).returns(@llm_provider)
+
+    assert_equal 1, Family::AutoCategorizer.new(@family, transaction_ids: ids).auto_categorize
+    assert_equal category, Transaction.find(unanswered_id).category
+  end
+
   test "raises when provider returns an unsuccessful response" do
     txn = create_transaction(account: @account, name: "Coffee shop").transaction
     @family.categories.create!(name: "Coffee")

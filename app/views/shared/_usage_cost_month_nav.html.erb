@@ -14,7 +14,7 @@
     <%= form.label :month, t("usage_costs.month_nav.month"), class: "sr-only" %>
     <%= form.month_field :month,
           value: report.period,
-          max: Date.current.strftime("%Y-%m"),
+          max: UsageCostReport.current_month,
           container_class: "w-auto rounded-lg",
           data: { auto_submit_form_target: "auto" } %>
   <% end %>

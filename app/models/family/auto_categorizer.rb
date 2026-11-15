@@ -1,4 +1,6 @@
 class Family::AutoCategorizer
+  include Family::OwnerBatchable
+
   Error = Class.new(StandardError)
 
   def initialize(family, transaction_ids: [])
@@ -41,13 +43,11 @@ class Family::AutoCategorizer
       raise Error, "No categories available for auto-categorization"
     end
 
+    # A failed request still carries the answers from the owners asked before
+    # it. They are applied before the failure is raised, so a retry only sends
+    # the transactions that are still uncategorized.
     result = auto_categorize_by_owner(categorization_provider, categories_input)
-
-    unless result.success?
-      raise Error, "Failed to auto-categorize transactions: #{result.error.message}"
-    end
-
-    shadow_decisions = run_shadow(categories_input)
+    shadow_decisions = run_shadow(categories_input) if result.success?
 
     modified_count = 0
     categorized_transaction_ids = []
@@ -86,24 +86,30 @@ class Family::AutoCategorizer
 
     record_shadow_comparisons(result.data, shadow_decisions) if shadow_decisions
 
-    DebugLogEntry.capture(
-      category: "auto_categorization",
-      level: "info",
-      message: "AI categorization completed",
-      source: self.class.name,
-      family: family,
-      provider: categorization_provider,
-      metadata: {
-        requested_transaction_ids: transaction_ids,
-        categorized_transaction_ids: categorized_transaction_ids,
-        cached_transaction_ids: cached_ids,
-        blocked_transaction_ids: blocked_ids,
-        modified_count: modified_count,
-        confidence_threshold: family.effective_categorization_confidence_threshold,
-        withheld_low_confidence: withheld,
-        shadow_compared_count: shadow_decisions ? shadow_decisions.size : 0
-      }.compact
-    )
+    # A failure with nothing applied is recorded by the caller that rescues it.
+    if result.success? || categorized_transaction_ids.any?
+      DebugLogEntry.capture(
+        category: "auto_categorization",
+        level: result.success? ? "info" : "warn",
+        message: result.success? ? "AI categorization completed" : "AI categorization stopped at a failed request",
+        source: self.class.name,
+        family: family,
+        provider: categorization_provider,
+        metadata: {
+          error_message: result.error&.message,
+          requested_transaction_ids: transaction_ids,
+          categorized_transaction_ids: categorized_transaction_ids,
+          cached_transaction_ids: cached_ids,
+          blocked_transaction_ids: blocked_ids,
+          modified_count: modified_count,
+          confidence_threshold: family.effective_categorization_confidence_threshold,
+          withheld_low_confidence: withheld,
+          shadow_compared_count: shadow_decisions ? shadow_decisions.size : 0
+        }.compact
+      )
+    end
+
+    raise Error, "Failed to auto-categorize transactions: #{result.error.message}" unless result.success?
 
     modified_count
   end
@@ -231,31 +237,15 @@ class Family::AutoCategorizer
       Rails.logger.warn("Recording shadow comparison failed for family #{family.id}: #{error.class}: #{error.message}")
     end
 
-    # One request per account owner, so each usage row is charged to the person
-    # whose accounts it covered. Stops at the first failure and returns it, so
-    # the run fails as a whole the way a single request would.
     def auto_categorize_by_owner(provider, categories_input)
-      decisions = []
-
-      transactions_by_owner.each do |owner, transactions|
-        response = provider.auto_categorize(
+      request_per_owner do |owner, transactions|
+        provider.auto_categorize(
           transactions: transactions_input(transactions),
           user_categories: categories_input,
           family: family,
           user: owner
         )
-        return response unless response.success?
-
-        decisions.concat(response.data)
       end
-
-      Provider::Response.new(success?: true, data: decisions, error: nil)
-    end
-
-    def transactions_by_owner
-      groups = scope.includes(entry: :account).group_by { |transaction| transaction.entry.account.owner_id }
-      owners = User.where(id: groups.keys.compact).index_by(&:id)
-      groups.transform_keys { |owner_id| owners[owner_id] }
     end
 
     def provider_key(provider)

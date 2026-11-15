@@ -1282,9 +1282,12 @@ Sure records which person each AI request and Plaid connection is charged to:
 
 - **AI requests** go to the person who started them: chat, bill smart-fill and
   merchant enhancement go to the person who asked. Auto-categorization and
-  merchant detection go to the owner of the transaction's account. PDF imports
-  go to the person who uploaded the file. Anything else, such as work with no
-  person behind it or on an account without an owner, is **Unassigned**.
+  merchant detection go to the owner of the transaction's account, so a
+  household with several account owners makes one request per owner and sends
+  its category or merchant list once with each. PDF imports go to the person
+  who uploaded the file, or to whoever restarted processing of a file uploaded
+  before. Anything else, such as work with no person behind it or on an
+  account without an owner, is **Unassigned**.
 - **Plaid** has a monthly ledger with one row per connection per month. A row
   lists the products Plaid billed for that connection and how many transactions
   refresh calls it made, and is kept after the connection is deleted. Each row
@@ -1306,11 +1309,15 @@ CSV, and set the Plaid rates at **Settings → Usage cost report**
 (`/admin/usage_costs`). Every user sees their own figures at **Settings → My usage
 costs** (`/settings/usage_costs`).
 
+Months are UTC calendar months, whatever the family's or viewer's time zone.
+
 All figures are estimates in USD, using the pricing table above and the Plaid
 rates you entered. Requests to models with no pricing entry are counted as
 unpriced, not as free. Failed requests are left out. Tracking starts from the
 upgrade that added this report: AI usage recorded earlier shows as Unassigned,
 and the Plaid ledger starts with the connections that existed at that point.
+Deleting a family deletes its usage rows, so a month in which a family was
+deleted reports less than the Plaid and AI provider invoices for that month.
 
 ## Troubleshooting
 

@@ -1,9 +1,10 @@
 require "csv"
 
-# Estimated AI and Plaid cost for one calendar month, per person. AI figures
-# come from llm_usages (created_at within the month in the app time zone),
-# Plaid figures from the plaid_item_usages ledger priced at the configured
-# rates. Rows without a user become one "unassigned" line per family.
+# Estimated AI and Plaid cost for one calendar month, per person. Months are
+# UTC calendar months, so every viewer, request and job agrees on which month
+# a cost belongs to. AI figures come from llm_usages (created_at within the
+# month), Plaid figures from the plaid_item_usages ledger priced at the
+# configured rates. Rows without a user become one "unassigned" line per family.
 #
 # Failed AI calls (an error recorded, no cost) are left out entirely: they
 # cost nothing, and counting them as unpriced would suggest a missing price.
@@ -65,17 +66,23 @@ class UsageCostReport
     @user = user
   end
 
+  def self.current_month
+    Time.current.utc.to_date.beginning_of_month
+  end
+
   def self.parse_month(value)
     case value
-    when Date, Time, ActiveSupport::TimeWithZone
-      value.to_date.beginning_of_month
+    when Time, ActiveSupport::TimeWithZone
+      value.utc.to_date.beginning_of_month
+    when Date
+      value.beginning_of_month
     when /\A(\d{4})-(\d{2})\z/
       Date.new($1.to_i, $2.to_i, 1)
     else
-      Date.current.beginning_of_month
+      current_month
     end
   rescue Date::Error
-    Date.current.beginning_of_month
+    current_month
   end
 
   def period
@@ -88,7 +95,7 @@ class UsageCostReport
 
   # nil when the next month hasn't started yet.
   def next_month
-    month.next_month unless month.next_month > Date.current
+    month.next_month unless month.next_month > self.class.current_month
   end
 
   def lines
@@ -147,7 +154,7 @@ class UsageCostReport
     end
 
     def month_range
-      month.in_time_zone.beginning_of_month..month.in_time_zone.end_of_month
+      month.in_time_zone("UTC")...month.next_month.in_time_zone("UTC")
     end
 
     def ai_scope

@@ -1,7 +1,8 @@
-# Monthly ledger of what Plaid bills for each item: one row per item per
-# calendar month. Plaid charges a subscription per item per billed product for
-# every month the item exists, plus a fee per /transactions/refresh call. Rows
-# keep plaid_item_id without a foreign key so they survive the item's deletion.
+# Monthly ledger of what Plaid bills for each item: one row per item per UTC
+# calendar month (see UsageCostReport.current_month). Plaid charges a
+# subscription per item per billed product for every month the item exists,
+# plus a fee per /transactions/refresh call. Rows keep plaid_item_id without a
+# foreign key so they survive the item's deletion.
 class PlaidItemUsage < ApplicationRecord
   # The monthly rates each billed product costs. Investments is billed as two
   # products, holdings and investment transactions, and every sync of an item
@@ -30,7 +31,7 @@ class PlaidItemUsage < ApplicationRecord
 
   class << self
     def current_period
-      Date.current.strftime("%Y-%m")
+      UsageCostReport.current_month.strftime("%Y-%m")
     end
 
     # Billed products only accumulate within a month: once Plaid has billed a
@@ -73,7 +74,11 @@ class PlaidItemUsage < ApplicationRecord
       parsed = RATE_SETTINGS.keys.index_with { |key| parse_rate(values[key]) }
       return false if parsed.values.any?(&:nil?)
 
-      parsed.each { |key, rate| Setting.public_send("#{RATE_SETTINGS.fetch(key)}=", rate) }
+      # Each rate is its own settings row, and the settings cache is cleared
+      # only after commit, so a failed write leaves the saved rates as they were.
+      Setting.transaction do
+        parsed.each { |key, rate| Setting.public_send("#{RATE_SETTINGS.fetch(key)}=", rate) }
+      end
       true
     end
 

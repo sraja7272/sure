@@ -10,12 +10,15 @@ class EnhanceProviderMerchantsJob < ApplicationJob
 
   # Without merchant_ids, queues one job per LLM call's worth of the family's
   # unenhanced merchants, like merchant detection. The lock then holds the
-  # number of those jobs, and the last one to finish releases it. `user` is who
-  # the AI usage is charged to.
-  def perform(family, merchant_ids: nil, user: nil)
+  # number of those jobs, and the last one to finish releases it. `user_id` is
+  # who the AI usage is charged to. It is an id rather than a record so a user
+  # deleted while batches are queued leaves them to run unattributed instead of
+  # being discarded with the lock still held.
+  def perform(family, merchant_ids: nil, user_id: nil)
     key = self.class.lock_key(family)
 
     if merchant_ids
+      user = User.find_by(id: user_id) if user_id
       ProviderMerchant::Enhancer.new(family, merchant_ids: merchant_ids, user: user).enhance
       Rails.cache.delete(key) if Rails.cache.decrement(key, 1, expires_in: LOCK_TTL).to_i <= 0
     else
@@ -23,7 +26,7 @@ class EnhanceProviderMerchantsJob < ApplicationJob
       return Rails.cache.delete(key) if batches.empty?
 
       Rails.cache.write(key, batches.size, raw: true, expires_in: LOCK_TTL)
-      batches.each { |ids| self.class.perform_later(family, merchant_ids: ids, user: user) }
+      batches.each { |ids| self.class.perform_later(family, merchant_ids: ids, user_id: user_id) }
     end
   end
 end

@@ -31,7 +31,7 @@ class Admin::UsageCostsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, @member.display_name
-    assert_includes response.body, @member.family.name
+    assert_select "section h3", text: @member.family.name
     assert_includes response.body, I18n.t("admin.usage_costs.show.unassigned")
     assert_includes response.body, I18n.t("usage_costs.requests.unpriced", count: 1)
     assert_select "a[href='#{admin_usage_costs_path(month: "2026-09")}']"

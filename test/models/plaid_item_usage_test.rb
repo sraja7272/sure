@@ -21,6 +21,31 @@ class PlaidItemUsageTest < ActiveSupport::TestCase
     end
   end
 
+  test "current_period is the UTC month, whatever the time zone" do
+    # 8pm on 31 October in Los Angeles is already November in UTC.
+    Time.use_zone("America/Los_Angeles") do
+      travel_to Time.utc(2026, 11, 1, 3) do
+        assert_equal "2026-11", PlaidItemUsage.current_period
+      end
+    end
+
+    # 5am on 1 November in Tokyo is still October in UTC.
+    Time.use_zone("Asia/Tokyo") do
+      travel_to Time.utc(2026, 10, 31, 20) do
+        assert_equal "2026-10", PlaidItemUsage.current_period
+      end
+    end
+  end
+
+  test "a request in a western zone and a UTC job record the same month" do
+    travel_to Time.utc(2026, 11, 1, 3) do
+      Time.use_zone("America/Los_Angeles") { PlaidItemUsage.record!(@plaid_item) }
+      Time.use_zone("UTC") { PlaidItemUsage.record!(@plaid_item) }
+    end
+
+    assert_equal [ "2026-11" ], PlaidItemUsage.where(plaid_item_id: @plaid_item.id).pluck(:period)
+  end
+
   test "record! creates one row for the item's month" do
     assert_difference "PlaidItemUsage.count", 1 do
       PlaidItemUsage.record!(@plaid_item, period: "2026-11")
@@ -125,6 +150,17 @@ class PlaidItemUsageTest < ActiveSupport::TestCase
     assert_nil usage.user_id
   end
 
+  test "deleting the family removes its usage rows" do
+    family = Family.create!(name: "Closing Family")
+    PlaidItemUsage.create!(family: family, plaid_item_id: SecureRandom.uuid, period: "2026-11")
+    PlaidItemUsage.record!(@plaid_item, period: "2026-11")
+
+    family.destroy!
+
+    assert_not PlaidItemUsage.exists?(family_id: family.id)
+    assert PlaidItemUsage.exists?(plaid_item_id: @plaid_item.id, period: "2026-11")
+  end
+
   test "rates are read from settings as decimals" do
     Setting.plaid_rate_transactions = "0.30"
     Setting.plaid_rate_transactions_refresh = "0.12"
@@ -163,6 +199,20 @@ class PlaidItemUsageTest < ActiveSupport::TestCase
       assert_not PlaidItemUsage.update_rates(valid.merge(bad))
       assert_equal 0, Setting.plaid_rate_transactions.to_d
     end
+  end
+
+  test "update_rates saves nothing when a write fails partway" do
+    Setting.stubs(:plaid_rate_investments_holdings=).raises(ActiveRecord::StatementInvalid, "boom")
+
+    assert_raises(ActiveRecord::StatementInvalid) do
+      PlaidItemUsage.update_rates(
+        transactions: "0.30", transactions_refresh: "0.12", investments_holdings: "0.18",
+        investments_transactions: "0.07", liabilities: "0.20"
+      )
+    end
+
+    assert_not Setting.exists?(var: %w[plaid_rate_transactions plaid_rate_transactions_refresh])
+    assert_equal 0, Setting.plaid_rate_transactions.to_d
   end
 
   test "rates default to zero" do

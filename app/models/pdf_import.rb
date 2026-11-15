@@ -200,8 +200,10 @@ class PdfImport < Import
     ai_summary.present?
   end
 
-  def process_with_ai_later
-    return false unless with_lock { pending? && !ai_processed? && rows_count.zero? && pdf_uploaded? && update!(status: :importing) }
+  # `user` is who the AI processing is charged to: whoever starts it, which for
+  # a reused import can be someone other than its first uploader.
+  def process_with_ai_later(user: self.user)
+    return false unless with_lock { pending? && !ai_processed? && rows_count.zero? && pdf_uploaded? && update!(status: :importing, user: user) }
 
     begin
       ProcessPdfJob.perform_later(self)

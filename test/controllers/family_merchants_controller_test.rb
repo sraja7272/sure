@@ -189,7 +189,7 @@ class FamilyMerchantsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "enhance enqueues job and redirects" do
-    assert_enqueued_with(job: EnhanceProviderMerchantsJob, args: [ @user.family, { user: @user } ]) do
+    assert_enqueued_with(job: EnhanceProviderMerchantsJob, args: [ @user.family, { user_id: @user.id } ]) do
       post enhance_family_merchants_path
     end
 

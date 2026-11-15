@@ -87,15 +87,53 @@ class UsageCostReportTest < ActiveSupport::TestCase
     assert_empty report.lines
   end
 
-  test "only counts AI rows inside the month in the app time zone" do
+  test "only counts AI rows inside the UTC calendar month, whatever the time zone" do
     Time.use_zone("America/New_York") do
-      ai_usage(@member, cost: "1.00", at: Time.zone.local(2026, 10, 1, 0, 30))
-      ai_usage(@member, cost: "2.00", at: Time.zone.local(2026, 10, 31, 23, 30))
-      ai_usage(@member, cost: "4.00", at: Time.zone.local(2026, 9, 30, 23, 30))
-      ai_usage(@member, cost: "8.00", at: Time.zone.local(2026, 11, 1, 0, 30))
+      ai_usage(@member, cost: "1.00", at: Time.utc(2026, 10, 1, 0, 30))
+      ai_usage(@member, cost: "2.00", at: Time.utc(2026, 10, 31, 23, 30))
+      ai_usage(@member, cost: "4.00", at: Time.utc(2026, 9, 30, 23, 30))
+      ai_usage(@member, cost: "8.00", at: Time.utc(2026, 11, 1, 0, 30))
 
       assert_equal BigDecimal("3.00"), report.lines.sole.ai_cost
     end
+  end
+
+  test "the current month is the UTC month, whatever the time zone" do
+    # 8pm on 31 October in Los Angeles is already November in UTC.
+    Time.use_zone("America/Los_Angeles") do
+      travel_to Time.utc(2026, 11, 1, 3) do
+        assert_equal Date.new(2026, 11, 1), UsageCostReport.current_month
+        assert_equal Date.new(2026, 11, 1), UsageCostReport.new.month
+        assert_equal Date.new(2026, 11, 1), UsageCostReport.new(month: "garbage").month
+        assert_equal Date.new(2026, 11, 1), UsageCostReport.new(month: "2026-10").next_month
+        assert_nil UsageCostReport.new(month: "2026-11").next_month
+      end
+    end
+
+    # 5am on 1 November in Tokyo is still October in UTC.
+    Time.use_zone("Asia/Tokyo") do
+      travel_to Time.utc(2026, 10, 31, 20) do
+        assert_equal Date.new(2026, 10, 1), UsageCostReport.new.month
+        assert_nil UsageCostReport.new(month: "2026-10").next_month
+      end
+    end
+  end
+
+  test "a time picks the UTC month it falls in" do
+    late_october_in_los_angeles = Time.utc(2026, 11, 1, 3).in_time_zone("America/Los_Angeles")
+
+    assert_equal Date.new(2026, 11, 1), UsageCostReport.new(month: late_october_in_los_angeles).month
+  end
+
+  test "the month's AI rows near a boundary are the same in every time zone" do
+    ai_usage(@member, cost: "1.00", at: Time.utc(2026, 10, 31, 23, 30))
+    ai_usage(@member, cost: "2.00", at: Time.utc(2026, 11, 1, 0, 30))
+
+    costs = %w[UTC America/Los_Angeles Asia/Tokyo].map do |zone|
+      Time.use_zone(zone) { report.lines.sole.ai_cost }
+    end
+
+    assert_equal [ BigDecimal("1.00") ] * 3, costs
   end
 
   test "only counts Plaid rows for the month's period" do

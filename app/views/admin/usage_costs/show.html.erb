@@ -19,12 +19,11 @@
       <%= render DS::EmptyState.new(icon: "receipt", title: t(".no_usage")) %>
     <% else %>
       <% @report.groups.each do |group| %>
-        <section class="space-y-2">
-          <h3 class="text-sm font-medium text-primary"><%= group.family.name.presence || t(".unnamed_family") %></h3>
-
+        <% family_name = group.family.name.presence || t(".unnamed_family") %>
+        <%= render layout: "shared/usage_cost_section", locals: { title: family_name } do %>
           <%= render DS::Table.new(
             rows: group.lines + [ group.subtotal ],
-            label: group.family.name.presence || t(".unnamed_family"),
+            label: family_name,
             row_class: ->(row) { "font-medium bg-container-inset" if row.is_a?(UsageCostReport::Totals) }
           ) do |table| %>
             <% table.with_column(t(".person"), row_header: true) do |row| %>
@@ -43,7 +42,7 @@
             <% table.with_column(t(".plaid_cost"), numeric: true) { |row| format_usage_cost(row.plaid_cost) } %>
             <% table.with_column(t(".total"), numeric: true) { |row| format_usage_cost(row.total) } %>
           <% end %>
-        </section>
+        <% end %>
       <% end %>
     <% end %>
 

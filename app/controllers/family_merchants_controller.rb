@@ -118,7 +118,7 @@ class FamilyMerchantsController < ApplicationController
       return redirect_to family_merchants_path, alert: t(".already_running")
     end
 
-    EnhanceProviderMerchantsJob.perform_later(Current.family, user: Current.user)
+    EnhanceProviderMerchantsJob.perform_later(Current.family, user_id: Current.user.id)
     redirect_to family_merchants_path, notice: t(".success")
   end
 
