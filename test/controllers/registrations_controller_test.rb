@@ -14,6 +14,7 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
 
     get new_registration_url(invitation: invitations(:one).token)
     assert_redirected_to new_session_path
+    assert_equal invitations(:one).token, session[:pending_invitation_token]
   end
 
   test "new reaches sign-in without an alert when signup is closed and SSO auto-redirect is on" do

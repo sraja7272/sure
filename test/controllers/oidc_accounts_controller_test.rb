@@ -438,6 +438,42 @@ class OidcAccountsControllerTest < ActionController::TestCase
       AccountShare.where(user: invitee).pluck(:account_id).sort
   end
 
+  test "create_user accepts the invitation from the followed link when the provider email matches" do
+    invitation = invitations(:one)
+    session[:pending_invitation_token] = invitation.token
+    session[:pending_oidc_auth] = {
+      "provider" => "openid_connect", "uid" => "invite-link-uid-1",
+      "email" => invitation.email.upcase, "first_name" => "In", "last_name" => "Vitee"
+    }
+
+    post :create_user
+    assert_redirected_to root_path
+
+    invitee = User.find_by(email: invitation.email)
+    assert_equal invitation.family_id, invitee.family_id
+    assert_equal invitation.role, invitee.role
+    assert_not_nil invitation.reload.accepted_at
+    assert_nil session[:pending_invitation_token]
+  end
+
+  test "create_user starts a new family when the provider email is not the invited one" do
+    invitation = invitations(:one)
+    session[:pending_invitation_token] = invitation.token
+    session[:pending_oidc_auth] = {
+      "provider" => "openid_connect", "uid" => "invite-link-uid-2",
+      "email" => "someone-else@example.com", "first_name" => "Some", "last_name" => "One"
+    }
+
+    assert_difference "Family.count", +1 do
+      post :create_user
+    end
+    assert_redirected_to root_path
+
+    newcomer = User.find_by(email: "someone-else@example.com")
+    assert_not_equal invitation.family_id, newcomer.family_id
+    assert_nil invitation.reload.accepted_at
+  end
+
   test "create_user via invitation shares nothing when family sharing is private" do
     family = families(:dylan_family)
     family.update!(default_account_sharing: "private")

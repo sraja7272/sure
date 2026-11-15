@@ -125,6 +125,9 @@ class RegistrationsController < ApplicationController
     def redirect_to_sso_sign_in
       return unless sso_auto_redirect_provider
 
+      # Carried to the provider sign-in so an invitation link still leads to
+      # the family it came from.
+      session[:pending_invitation_token] = params[:invitation] if params[:invitation].present?
       redirect_to new_session_path
     end
 

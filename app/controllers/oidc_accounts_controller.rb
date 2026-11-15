@@ -17,7 +17,7 @@ class OidcAccountsController < ApplicationController
     @user_exists = User.find_by_email_with_legacy_fallback(@email).present? if @email.present?
 
     # Check for a pending invitation for this email
-    @pending_invitation = Invitation.pending.find_by(email: @email) if @email.present?
+    @pending_invitation = pending_invitation_for(@email)
 
     # Determine whether we should offer JIT account creation for this
     # pending auth, based on JIT mode and allowed domains.
@@ -106,7 +106,7 @@ class OidcAccountsController < ApplicationController
     email = @pending_auth["email"]
 
     # Check for a pending invitation for this email
-    invitation = Invitation.pending.find_by(email: email)
+    invitation = pending_invitation_for(email)
 
     # Respect global JIT configuration: in link_only mode or when the email
     # domain is not allowed, block JIT account creation—unless there's a
@@ -196,6 +196,7 @@ class OidcAccountsController < ApplicationController
 
       # Clear pending auth from session
       session.delete(:pending_oidc_auth)
+      session.delete(:pending_invitation_token)
 
       notice = invitation.present? ? t("invitations.accept_choice.joined_household") : t(".account_created")
       redirect_to root_path, notice: notice
@@ -205,6 +206,20 @@ class OidcAccountsController < ApplicationController
   end
 
   private
+
+    # The invitation this sign-in should accept, if any. An invitation link
+    # followed before signing in leaves its token in the session; that
+    # invitation wins, but only when the provider reports the invited email, so
+    # the link alone does not let someone else into the family.
+    def pending_invitation_for(email)
+      return nil if email.blank?
+
+      token = session[:pending_invitation_token]
+      linked = Invitation.pending.find_by(token: token) if token.present?
+      return linked if linked && linked.email.to_s.strip.downcase == email.to_s.strip.downcase
+
+      Invitation.pending.find_by(email: email)
+    end
 
     def reject_removed_identity_after_lock
       session.delete(:pending_oidc_auth)
