@@ -20,6 +20,8 @@ export default class extends Controller {
 
   connect() {
     this.sequence = 0;
+    this.confirmedSequence = 0;
+    this.snapshots = new Map();
     this.pending = false;
     this.clientIdTarget.value = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
     this.savedState = this.#currentState();
@@ -46,6 +48,7 @@ export default class extends Controller {
       this.pending = false;
       this.sequence += 1;
       this.sequenceTarget.value = this.sequence;
+      this.snapshots.set(this.sequence, this.#currentState());
       this.element.requestSubmit();
     }, this.delayValue);
   }
@@ -56,13 +59,22 @@ export default class extends Controller {
       formSubmission?.formData?.get("sequence") ?? this.sequence,
     );
 
+    // Remember what the server confirmed, even for a save a newer change has
+    // overtaken, so a later failure restores the newest confirmed state.
+    if (success === true && submitted > this.confirmedSequence) {
+      this.confirmedSequence = submitted;
+      this.savedState = this.snapshots.get(submitted) ?? this.savedState;
+      for (const sequence of this.snapshots.keys()) {
+        if (sequence <= submitted) this.snapshots.delete(sequence);
+      }
+    }
+
     // A newer change is waiting or was sent after this one: its own save will
     // report. A save Turbo aborted for a newer one has no success value.
     if (this.pending || submitted !== this.sequence || success === undefined)
       return;
 
     if (success) {
-      this.savedState = this.#currentState();
       clearTimeout(this.noticeTimeout);
       this.noticeTimeout = setTimeout(
         () => this.#show(this.savedNoticeTarget),

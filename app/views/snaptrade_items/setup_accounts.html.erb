@@ -86,12 +86,14 @@
             end
             brokerage_connect_frame = @snaptrade_item.oauth_configured? ? "_top" : snaptrade_authorize_frame
           %>
-          <%= render DS::Link.new(
-            text: t("snaptrade_items.setup_accounts.try_again", default: "Connect Brokerage"),
-            variant: "primary",
-            href: brokerage_connect_href,
-            frame: brokerage_connect_frame
-          ) %>
+          <% if connector_enabled?("snaptrade") %>
+            <%= render DS::Link.new(
+              text: t("snaptrade_items.setup_accounts.try_again", default: "Connect Brokerage"),
+              variant: "primary",
+              href: brokerage_connect_href,
+              frame: brokerage_connect_frame
+            ) %>
+          <% end %>
           <%= render DS::Link.new(
             text: t("snaptrade_items.setup_accounts.back_to_settings", default: "Back to Settings"),
             variant: "secondary",

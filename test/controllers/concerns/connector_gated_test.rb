@@ -61,6 +61,19 @@ class ConnectorGatedTest < ActionDispatch::IntegrationTest
     assert_not_equal I18n.t("connectors.disabled"), flash[:alert]
   end
 
+  test "relinking an account with only a legacy SimpleFIN link stays allowed when it is off" do
+    item = SimplefinItem.create!(family: @family, name: "Existing", access_url: "https://example.com/access")
+    simplefin_account = item.simplefin_accounts.create!(name: "Savings", account_id: "sf-legacy", account_type: "savings", currency: "USD", current_balance: 5)
+    account = @family.accounts.create!(name: "Savings", balance: 5, currency: "USD", accountable: Depository.new)
+    account.update!(simplefin_account: simplefin_account)
+    assert_empty account.account_providers
+    Provider::ConnectorAvailability.update!(%w[plaid])
+
+    get select_existing_account_simplefin_items_path(account_id: account.id)
+
+    assert_not_equal I18n.t("connectors.disabled"), flash[:alert]
+  end
+
   test "linking an unlinked account is refused when the connector is off" do
     account = @family.accounts.create!(name: "Manual", balance: 0, currency: "USD", accountable: Depository.new)
     Provider::ConnectorAvailability.update!(%w[plaid])
@@ -104,6 +117,18 @@ class ConnectorGatedTest < ActionDispatch::IntegrationTest
     assert_no_difference "SnaptradeItem.count" do
       post start_oauth_device_flow_snaptrade_items_path
     end
+  end
+
+  test "snaptrade treats an item that never finished authorizing as no connection" do
+    sign_in users(:empty)
+    assert families(:empty).snaptrade_items.exists?
+    assert_not families(:empty).snaptrade_items.syncable.exists?
+    Provider::Snaptrade.stubs(:authorization_code_configured?).returns(true)
+    Provider::ConnectorAvailability.update!(%w[plaid])
+
+    get oauth_authorize_snaptrade_items_path
+
+    assert_equal I18n.t("connectors.disabled"), flash[:alert]
   end
 
   test "brex account flows are refused when brex is off" do

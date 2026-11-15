@@ -29,21 +29,22 @@ class Provider::ConnectorAvailability
   MAX_TRACKED_PAGES = 50
 
   class << self
-    # Every connector, sorted by name.
+    # Every connector, sorted by name. Adapters register when they load and
+    # don't change at runtime, so the list is built once per class load.
     # @return [Array<Connector>]
     def all
-      Provider::Factory.registered_provider_types.filter_map do |provider_type|
+      @all ||= Provider::Factory.registered_provider_types.filter_map do |provider_type|
         key = key_for_provider_type(provider_type)
         next if key.blank?
 
         meta = Provider::Metadata.for(key)
         kind = Array(meta[:kinds]).first.presence_in(KINDS) || "Bank"
         Connector.new(key: key, name: meta[:name] || key.titleize, kind: kind)
-      end.uniq(&:key).sort_by { |c| c.name.downcase }
+      end.uniq(&:key).sort_by { |c| c.name.downcase }.freeze
     end
 
     def keys
-      all.map(&:key)
+      @keys ||= all.map(&:key).freeze
     end
 
     # "PlaidAccount" => "plaid", "FinancekitAccountLineage" => "financekit"

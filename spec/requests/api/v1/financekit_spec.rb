@@ -52,7 +52,7 @@ RSpec.describe "Api::V1::Financekit", type: :request do
       schema "$ref" => "#/components/schemas/FinancekitError"
       run_test! skip: "Documentation only; behavior covered by Minitest"
     end
-    response "403", "Insufficient permission or publisher eligibility" do
+    response "403", "Insufficient permission, publisher eligibility, or FinanceKit switched off by a super admin" do
       schema "$ref" => "#/components/schemas/FinancekitError"
       run_test! skip: "Documentation only; behavior covered by Minitest"
     end

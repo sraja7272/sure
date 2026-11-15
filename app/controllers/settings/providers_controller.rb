@@ -507,8 +507,9 @@ class Settings::ProvidersController < ApplicationController
 
     # A connector a super admin switched off is no longer offered, but a family
     # that already has a connection through it keeps seeing it to manage it.
+    # Goes by the family's records, not the summary: some summaries skip items
+    # (e.g. SimpleFIN without an access URL) that still need managing.
     def hidden_connector_entry?(entry)
-      entry[:summary][:status] == :off &&
-        !Provider::ConnectorAvailability.enabled?(entry[:provider_key])
+      entry[:summary][:status] == :off && connector_offer_hidden?(entry[:provider_key])
     end
 end

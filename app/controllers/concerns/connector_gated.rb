@@ -47,6 +47,11 @@ module ConnectorGated
       return false unless account
 
       key = Provider::ConnectorAvailability.normalize_key(key)
+      # Older links live in accounts.plaid_account_id / simplefin_account_id
+      # rather than account_providers (see Account::Linkable).
+      return true if key == "plaid" && account.plaid_account_id.present?
+      return true if key == "simplefin" && account.simplefin_account_id.present?
+
       account.account_providers.pluck(:provider_type).any? do |provider_type|
         Provider::ConnectorAvailability.key_for_provider_type(provider_type) == key
       end

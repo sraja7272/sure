@@ -52,11 +52,9 @@ module Admin
           [ t("admin.connectors.show.page_title"), nil ]
         ]
         by_kind = Provider::ConnectorAvailability.all.group_by(&:kind)
-        @connector_groups = {
-          t("admin.connectors.show.kinds.bank") => by_kind["Bank"],
-          t("admin.connectors.show.kinds.investment") => by_kind["Investment"],
-          t("admin.connectors.show.kinds.crypto") => by_kind["Crypto"]
-        }.compact_blank
+        @connector_groups = Provider::ConnectorAvailability::KINDS
+          .map { |kind| [ kind, by_kind[kind] ] }
+          .reject { |_kind, connectors| connectors.blank? }
         @enabled_keys = Provider::ConnectorAvailability.enabled_keys.to_set
       end
   end

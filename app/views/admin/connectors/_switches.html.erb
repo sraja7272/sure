@@ -1,6 +1,6 @@
 <div id="connector_switches" class="space-y-4">
-  <% @connector_groups.each do |title, connectors| %>
-    <%= settings_section title: title do %>
+  <% @connector_groups.each do |kind, connectors| %>
+    <%= settings_section title: connector_kind_title(kind) do %>
       <div class="divide-y divide-subdued">
         <% connectors.each do |connector| %>
           <div class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">

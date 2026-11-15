@@ -270,6 +270,35 @@ class Settings::ProvidersControllerTest < ActionDispatch::IntegrationTest
     Setting.enabled_connectors = nil
   end
 
+  test "a switched-off SimpleFIN stays listed for a family whose item has no access URL" do
+    item = SimplefinItem.create!(family: families(:dylan_family), name: "Half set up", access_url: "https://example.com/access")
+    item.update_columns(access_url: nil)
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[simplefin])
+
+    get settings_providers_url
+
+    assert_response :success
+    assert_includes response.body, connect_form_settings_providers_path(provider_key: "simplefin")
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
+  test "a switched-off connector's panel hides the button that adds another connection" do
+    TruelayerItem.create!(family: families(:dylan_family), name: "Acme Bank", client_id: "sure-test", client_secret: "secret", refresh_token: "rt")
+
+    get connect_form_settings_providers_url(provider_key: "truelayer")
+    assert_response :success
+    assert_includes response.body, connect_truelayer_items_path
+
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[truelayer])
+
+    get connect_form_settings_providers_url(provider_key: "truelayer")
+    assert_response :success
+    assert_not_includes response.body, connect_truelayer_items_path
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
   test "a switched-off connector stays listed for a family that has a connection through it" do
     Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[wise])
 

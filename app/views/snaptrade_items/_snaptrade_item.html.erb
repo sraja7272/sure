@@ -77,13 +77,15 @@
 
             <%= render DS::Menu.new do |menu| %>
               <% sync_schedule_menu_item(menu, snaptrade_item) %>
-              <% menu.with_item(
-                variant: "link",
-                text: t(".connect_brokerage"),
-                icon: "plus",
-                href: brokerage_connect_href,
-                frame: brokerage_connect_frame
-              ) %>
+              <% if connector_enabled?("snaptrade") %>
+                <% menu.with_item(
+                  variant: "link",
+                  text: t(".connect_brokerage"),
+                  icon: "plus",
+                  href: brokerage_connect_href,
+                  frame: brokerage_connect_frame
+                ) %>
+              <% end %>
               <% if unlinked_count > 0 %>
                 <% menu.with_item(
                   variant: "link",
@@ -147,13 +149,15 @@
             <div class="p-4 flex flex-col gap-3 items-center justify-center">
               <p class="text-primary font-medium text-sm"><%= t(".no_accounts_title") %></p>
               <p class="text-secondary text-sm"><%= t(".no_accounts_description") %></p>
-              <%= render DS::Link.new(
-                text: t(".connect_brokerage"),
-                icon: "link",
-                variant: "primary",
-                href: brokerage_connect_href,
-                frame: brokerage_connect_frame
-              ) %>
+              <% if connector_enabled?("snaptrade") %>
+                <%= render DS::Link.new(
+                  text: t(".connect_brokerage"),
+                  icon: "link",
+                  variant: "primary",
+                  href: brokerage_connect_href,
+                  frame: brokerage_connect_frame
+                ) %>
+              <% end %>
             </div>
           <% end %>
         <% end %>

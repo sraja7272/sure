@@ -6796,7 +6796,8 @@ paths:
               schema:
                 "$ref": "#/components/schemas/FinancekitError"
         '403':
-          description: Insufficient permission or publisher eligibility
+          description: Insufficient permission, publisher eligibility, or FinanceKit
+            switched off by a super admin
           content:
             application/json:
               schema:
@@ -6865,7 +6866,8 @@ paths:
               schema:
                 "$ref": "#/components/schemas/FinancekitError"
         '403':
-          description: Insufficient permission or publisher eligibility
+          description: Insufficient permission, publisher eligibility, or FinanceKit
+            switched off by a super admin
           content:
             application/json:
               schema:
@@ -6955,7 +6957,8 @@ paths:
               schema:
                 "$ref": "#/components/schemas/FinancekitError"
         '403':
-          description: Insufficient permission or publisher eligibility
+          description: Insufficient permission, publisher eligibility, or FinanceKit
+            switched off by a super admin
           content:
             application/json:
               schema:
@@ -7040,7 +7043,8 @@ paths:
               schema:
                 "$ref": "#/components/schemas/FinancekitError"
         '403':
-          description: Insufficient permission or publisher eligibility
+          description: Insufficient permission, publisher eligibility, or FinanceKit
+            switched off by a super admin
           content:
             application/json:
               schema:
@@ -7122,7 +7126,8 @@ paths:
               schema:
                 "$ref": "#/components/schemas/FinancekitError"
         '403':
-          description: Insufficient permission or publisher eligibility
+          description: Insufficient permission, publisher eligibility, or FinanceKit
+            switched off by a super admin
           content:
             application/json:
               schema:
@@ -7203,7 +7208,8 @@ paths:
               schema:
                 "$ref": "#/components/schemas/FinancekitError"
         '403':
-          description: Insufficient permission or publisher eligibility
+          description: Insufficient permission, publisher eligibility, or FinanceKit
+            switched off by a super admin
           content:
             application/json:
               schema:
@@ -7278,7 +7284,8 @@ paths:
               schema:
                 "$ref": "#/components/schemas/FinancekitError"
         '403':
-          description: Insufficient permission or publisher eligibility
+          description: Insufficient permission, publisher eligibility, or FinanceKit
+            switched off by a super admin
           content:
             application/json:
               schema:
@@ -7353,7 +7360,8 @@ paths:
               schema:
                 "$ref": "#/components/schemas/FinancekitError"
         '403':
-          description: Insufficient permission or publisher eligibility
+          description: Insufficient permission, publisher eligibility, or FinanceKit
+            switched off by a super admin
           content:
             application/json:
               schema:
@@ -7571,7 +7579,8 @@ paths:
               schema:
                 "$ref": "#/components/schemas/FinancekitError"
         '403':
-          description: Insufficient permission or publisher eligibility
+          description: Insufficient permission, publisher eligibility, or FinanceKit
+            switched off by a super admin
           content:
             application/json:
               schema:
@@ -7653,7 +7662,8 @@ paths:
               schema:
                 "$ref": "#/components/schemas/FinancekitError"
         '403':
-          description: Insufficient permission or publisher eligibility
+          description: Insufficient permission, publisher eligibility, or FinanceKit
+            switched off by a super admin
           content:
             application/json:
               schema:
