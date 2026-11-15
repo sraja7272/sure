@@ -119,6 +119,11 @@ production:
   - The login form is visible with a note: "Local login is restricted to administrators."
   - Successful override logins are logged in the Rails logs.
 
+- `AUTH_SSO_AUTO_REDIRECT` (default: `false`)
+  - When `true` and exactly one SSO provider is registered, the sign-in and create-account pages send visitors straight to that provider instead of showing a form.
+  - Has no effect with zero or several providers.
+  - See [4.5](#45-sso-auto-redirect) for the full behavior.
+
 ### 3.3 JIT user creation
 
 - `AUTH_JIT_MODE` (default: `create_and_link`)
@@ -274,6 +279,25 @@ With these settings, you can run Sure in:
 Use the combination that best fits your self‑hosted environment and security posture.
 
 ---
+
+### 4.5 SSO auto‑redirect
+
+Skip Sure's sign-in page and go straight to a single provider:
+
+```bash
+AUTH_SSO_AUTO_REDIRECT=true
+```
+
+Behavior:
+
+- Opening the sign-in page, or being sent to it when signed out, continues to the provider without a click.
+- The create-account page and password sign-up are turned off; both lead to the provider. New accounts are created on return from the provider, subject to `AUTH_JIT_MODE` and `ALLOWED_OIDC_DOMAINS`, and pending invitations are matched by email.
+- When an SSO attempt comes back to Sure as a failure (Sure cannot reach the provider, sign-in cancelled, account not allowed), the sign-in page is shown with the error instead of redirecting again. What it offers follows the local login flags above, so keep `AUTH_LOCAL_LOGIN_ENABLED` or `AUTH_LOCAL_ADMIN_OVERRIDE_ENABLED` on if you want a password fallback during a provider outage.
+- If Sure can reach the provider but the browser cannot, or the provider's own login page is broken, nothing comes back to Sure and sign-in keeps handing off. Set `AUTH_SSO_AUTO_REDIRECT=false` to get the sign-in form back in that case.
+- Invitation links still work: someone without an account who follows one and signs in at the provider joins the inviting family when the provider reports the invited email. Signing in to an account that already exists does not accept the invitation or move that account. Someone who signs in with a different email is treated like any other first-time sign-in with that email: they sign in to an existing account or accept an invitation addressed to that email if there is one, and otherwise get a new family (or are blocked under `AUTH_JIT_MODE=link_only`).
+- The onboarding settings do not gate provider sign-up: accounts are still created when onboarding is closed, and the invite-only default family is not applied. Use `AUTH_JIT_MODE` and `ALLOWED_OIDC_DOMAINS` to control who can get an account.
+- Signing out returns to the provider. If the provider session is still active, the user is signed straight back in.
+- Mobile and desktop app sign-in are unaffected.
 
 ## 5. Multiple OIDC Providers
 

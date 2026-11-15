@@ -15,6 +15,12 @@ default: &default
     # as a second factor only.
     enabled: <%= ENV.fetch("AUTH_PASSKEY_LOGIN_ENABLED", "true") == "true" %>
 
+  sso:
+    # When true and exactly one SSO provider is registered, the sign-in and
+    # create-account pages send visitors straight to that provider. The sign-in
+    # page is still shown when an SSO attempt fails.
+    auto_redirect: <%= ENV.fetch("AUTH_SSO_AUTO_REDIRECT", "false") == "true" %>
+
   jit:
     # Controls behavior when a user signs in via SSO and no OIDC identity exists.
     # - "create_and_link" (default): create a new user + family when no match exists

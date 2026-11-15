@@ -15,8 +15,6 @@ ca:
         a provar.
       sso_provider_unavailable: El proveïdor SSO no està disponible actualment. Torna-ho
         a provar més tard o contacta amb un administrador.
-    mobile_sso_start:
-      redirecting_html: Redirigint a l'inici de sessió... <a href="%{url}">Fes clic
         aquí</a> si no se't redirigeix.
     new:
       demo_banner_message: Aquest és un entorn de demostració. Les credencials d'inici

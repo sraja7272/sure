@@ -16,8 +16,6 @@ it:
       sso_provider_unavailable: "Il provider SSO non è attualmente disponibile. Riprova più tardi o contatta un amministratore."
       sso_invalid_response: "Risposta non valida ricevuta dal provider SSO. Riprova."
       sso_failed: "Autenticazione single sign-on non riuscita. Riprova."
-    mobile_sso_start:
-      redirecting_html: "Reindirizzamento all'accesso... <a href=\"%{url}\">Clicca qui</a> se non vieni reindirizzato."
     new:
       email: Indirizzo email
       email_placeholder: tu@esempio.com

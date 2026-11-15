@@ -16,8 +16,6 @@ es:
       sso_provider_unavailable: El proveedor de SSO no está disponible en este momento. Por favor, inténtalo de nuevo más tarde o contacta con un administrador.
       sso_invalid_response: Se ha recibido una respuesta no válida del proveedor de SSO. Por favor, inténtalo de nuevo.
       sso_failed: Error en la autenticación de inicio de sesión único (SSO). Por favor, inténtalo de nuevo.
-    mobile_sso_start:
-      redirecting_html: Redirigiendo para iniciar sesión... <a href="%{url}">Haz clic aquí</a> si no se te redirige.
     new:
       email: Dirección de correo electrónico
       email_placeholder: tu@ejemplo.com

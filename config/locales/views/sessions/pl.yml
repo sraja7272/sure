@@ -15,8 +15,6 @@ pl:
         ponownie.
       sso_provider_unavailable: Dostawca SSO jest obecnie niedostępny. Spróbuj ponownie
         później lub skontaktuj się z administratorem.
-    mobile_sso_start:
-      redirecting_html: Przekierowywanie do logowania... <a href="%{url}">Kliknij
         tutaj</a>, jeśli nie nastąpi automatycznie.
     new:
       demo_banner_message: To jest środowisko demonstracyjne. Dane logowania zostały

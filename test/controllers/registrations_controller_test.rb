@@ -6,6 +6,62 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "new redirects to sign-in when SSO auto-redirect is on" do
+    stub_sso_auto_redirect
+
+    get new_registration_url
+    assert_redirected_to new_session_path
+
+    get new_registration_url(invitation: invitations(:one).token)
+    assert_redirected_to new_session_path
+    assert_equal invitations(:one).token, session[:pending_invitation_token]
+  end
+
+  test "new does not keep a malformed invitation param when SSO auto-redirect is on" do
+    stub_sso_auto_redirect
+
+    get new_registration_url(invitation: { x: "y" })
+
+    assert_redirected_to new_session_path
+    assert_nil session[:pending_invitation_token]
+  end
+
+  test "new reaches sign-in without an alert when signup is closed and SSO auto-redirect is on" do
+    stub_sso_auto_redirect
+    Setting.stubs(:onboarding_state).returns("closed")
+
+    get new_registration_url
+
+    assert_redirected_to new_session_path
+    assert_nil flash[:alert]
+  end
+
+  test "create does not sign up with a password when SSO auto-redirect is on" do
+    stub_sso_auto_redirect
+
+    assert_no_difference "User.count" do
+      post registration_url, params: { user: {
+        email: "john@example.com",
+        password: "Password1!" } }
+    end
+
+    assert_redirected_to new_session_path
+  end
+
+  test "demo hosts keep password sign-up when SSO auto-redirect is on" do
+    stub_sso_auto_redirect
+    host! "demo.sure.am"
+
+    get new_registration_url
+    assert_response :success
+
+    assert_difference "User.count", +1 do
+      post registration_url, params: { user: {
+        email: "demo-signup@example.com",
+        password: "Password1!" } }
+    end
+  end
+
   test "create redirects to correct URL" do
     post registration_url, params: { user: {
       email: "john@example.com",
@@ -185,4 +241,12 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil created_user
     assert_equal 0, AccountShare.where(user: created_user).count
   end
+
+  private
+
+    def stub_sso_auto_redirect
+      AuthConfig.stubs(:auto_redirect_provider).returns(
+        { id: "oidc", strategy: "openid_connect", name: "openid_connect" }
+      )
+    end
 end

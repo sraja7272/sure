@@ -16,8 +16,6 @@ pt-PT:
       sso_provider_unavailable: "O serviço SSO está atualmente indisponível. Tente novamente mais tarde ou contacte um administrador."
       sso_invalid_response: "Foi recebida uma resposta inválida do serviço SSO. Tente novamente."
       sso_failed: "A autenticação de início de sessão único falhou. Tente novamente."
-    mobile_sso_start:
-      redirecting_html: "A redirecionar para o início de sessão... <a href=\"%{url}\">Clique aqui</a> se não for redirecionado."
     new:
       email: Endereço de e-mail
       email_placeholder: voce@exemplo.com
