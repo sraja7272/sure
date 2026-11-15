@@ -1,0 +1,31 @@
+<%# locals: (report:) %>
+
+<div class="flex flex-wrap items-center gap-2">
+  <%= render DS::Link.new(
+    text: t("usage_costs.month_nav.previous"),
+    icon: "chevron-left",
+    href: url_for(month: report.previous_month.strftime("%Y-%m")),
+    variant: :outline
+  ) %>
+
+  <%# Picking a month loads it. The field has no visible label, so its box is
+      just the input and stands the same height as the outline links beside it. %>
+  <%= styled_form_with url: request.path, method: :get, data: { controller: "auto-submit-form" } do |form| %>
+    <%= form.label :month, t("usage_costs.month_nav.month"), class: "sr-only" %>
+    <%= form.month_field :month,
+          value: report.period,
+          max: UsageCostReport.current_month,
+          container_class: "w-auto rounded-lg",
+          data: { auto_submit_form_target: "auto" } %>
+  <% end %>
+
+  <% if report.next_month %>
+    <%= render DS::Link.new(
+      text: t("usage_costs.month_nav.next"),
+      icon: "chevron-right",
+      icon_position: :right,
+      href: url_for(month: report.next_month.strftime("%Y-%m")),
+      variant: :outline
+    ) %>
+  <% end %>
+</div>

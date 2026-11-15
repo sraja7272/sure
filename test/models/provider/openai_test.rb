@@ -1091,6 +1091,42 @@ class Provider::OpenaiTest < ActiveSupport::TestCase
     assert_equal usage, chunks.last.usage
   end
 
+  test "chat usage is charged to the given user, but never to a user from another family" do
+    provider = Provider::Openai.new("test-token", uri_base: "https://openrouter.ai/api/v1", model: "gpt-4.1")
+    family = families(:dylan_family)
+    usage = { "prompt_tokens" => 10, "completion_tokens" => 5, "total_tokens" => 15 }
+    provider.send(:client).stubs(:chat).returns(
+      "id" => "chatcmpl-synthetic", "choices" => [ { "message" => { "role" => "assistant", "content" => "Hello" } } ],
+      "usage" => usage
+    )
+
+    assert provider.chat_response("Hello", model: "gpt-4.1", family: family, user: users(:family_member)).success?
+    assert_equal users(:family_member), family.llm_usages.order(:created_at).last.user
+
+    assert provider.chat_response("Hello", model: "gpt-4.1", family: family, user: users(:empty)).success?
+    assert_nil family.llm_usages.order(:created_at).last.user_id
+  end
+
+  test "bank statement extraction records usage for the family and user" do
+    provider = Provider::Openai.new("test-token", model: "gpt-4.1")
+    family = families(:dylan_family)
+    user = users(:family_member)
+    Provider::Openai::BankStatementExtractor.any_instance.stubs(:extract_pages_from_pdf).returns([ "Statement text" ])
+    provider.send(:client).expects(:chat).returns(
+      "choices" => [ { "message" => { "content" => { "transactions" => [] }.to_json } } ],
+      "usage" => { "prompt_tokens" => 100, "completion_tokens" => 20, "total_tokens" => 120 }
+    )
+
+    assert_difference -> { family.llm_usages.count }, 1 do
+      assert provider.extract_bank_statement(pdf_content: "%PDF", family: family, user: user).success?
+    end
+
+    recorded = family.llm_usages.order(:created_at).last
+    assert_equal "extract_bank_statement", recorded.operation
+    assert_equal user, recorded.user
+    assert_equal [ 100, 20, 120 ], [ recorded.prompt_tokens, recorded.completion_tokens, recorded.total_tokens ]
+  end
+
   test "OpenRouter chat falls back to token estimates when reported cost is absent or invalid" do
     provider = Provider::Openai.new("test-token", uri_base: "https://openrouter.ai/api/v1", model: "gpt-4.1")
     family = families(:dylan_family)

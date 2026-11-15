@@ -161,6 +161,20 @@ class Provider::Openai::AutoCategorizerTest < ActiveSupport::TestCase
     assert_nil call_params.second[:response_format]
   end
 
+  test "categorization usage is charged to the given user" do
+    client = OpenAI::Client.new(access_token: "test-token", uri_base: "https://openrouter.ai/api/v1")
+    client.expects(:chat).returns(chat_response('{"categorizations":[{"transaction_id":"1","category_name":"Food"}]}'))
+    family = families(:dylan_family)
+    subject = Provider::Openai::AutoCategorizer.new(
+      client, model: "gpt-4.1", transactions: @transactions, user_categories: @user_categories,
+      custom_provider: true, family: family, user: users(:family_member), json_mode: "none"
+    )
+
+    assert_difference -> { family.llm_usages.where(user: users(:family_member)).count }, 1 do
+      subject.auto_categorize
+    end
+  end
+
   test "categorization records OpenRouter cost for an unknown model" do
     client = OpenAI::Client.new(access_token: "test-token", uri_base: "https://openrouter.ai/api/v1")
     usage = { "prompt_tokens" => 50, "completion_tokens" => 25, "total_tokens" => 75, "cost" => 0.004321 }

@@ -1,0 +1,8 @@
+<%# locals: (requests:, unpriced:) %>
+
+<div class="flex items-center justify-end gap-2">
+  <% if unpriced.positive? %>
+    <%= render DS::Pill.new(label: t("usage_costs.requests.unpriced", count: unpriced), tone: :warning, marker: false, title: t("usage_costs.requests.unpriced_help")) %>
+  <% end %>
+  <span><%= number_with_delimiter(requests) %></span>
+</div>

@@ -180,6 +180,21 @@ class Provider::AnthropicTest < ActiveSupport::TestCase
     assert_empty response.data.function_requests
   end
 
+  test "chat_response usage is charged to the given user" do
+    family = families(:dylan_family)
+    fake_client = stub_anthropic_client_with(
+      build_anthropic_message(
+        id: "msg_user", model: @subject_model, text_blocks: [ "Hi" ], tool_use_blocks: [],
+        usage: { input_tokens: 12, output_tokens: 5 }
+      )
+    )
+    @subject.instance_variable_set(:@client, fake_client)
+
+    assert_difference -> { family.llm_usages.where(user: users(:family_member)).count }, 1 do
+      assert @subject.chat_response("hi", model: @subject_model, family: family, user: users(:family_member)).success?
+    end
+  end
+
   test "chat_response streams text deltas and emits a final response chunk" do
     final_message = build_anthropic_message(
       id: "msg_stream",

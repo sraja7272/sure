@@ -10,9 +10,9 @@ class Provider::Openai::AutoCategorizer
   TRANSACTION_ID_KEYS = %w[transaction_id id txn_id].freeze
   CATEGORY_NAME_KEYS = %w[category_name category name].freeze
 
-  attr_reader :client, :model, :transactions, :user_categories, :custom_provider, :langfuse_trace, :family, :json_mode
+  attr_reader :client, :model, :transactions, :user_categories, :custom_provider, :langfuse_trace, :family, :user, :json_mode
 
-  def initialize(client, model: "", transactions: [], user_categories: [], custom_provider: false, langfuse_trace: nil, family: nil, json_mode: nil)
+  def initialize(client, model: "", transactions: [], user_categories: [], custom_provider: false, langfuse_trace: nil, family: nil, user: nil, json_mode: nil)
     @client = client
     @model = model
     @transactions = transactions
@@ -20,6 +20,7 @@ class Provider::Openai::AutoCategorizer
     @custom_provider = custom_provider
     @langfuse_trace = langfuse_trace
     @family = family
+    @user = user
     @json_mode = json_mode || default_json_mode
   end
 

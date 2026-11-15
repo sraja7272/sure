@@ -96,6 +96,21 @@ class PdfImportTest < ActiveSupport::TestCase
     assert_equal "importing", import.reload.status
   end
 
+  test "process_with_ai_later charges the person who triggers it" do
+    import = PdfImport.create_from_statement!(statement: create_pdf_statement, user: users(:family_member))
+
+    assert import.process_with_ai_later(user: users(:family_admin))
+    assert_equal users(:family_admin), import.reload.user
+  end
+
+  test "process_with_ai_later keeps the user when processing is already claimed" do
+    import = PdfImport.create_from_statement!(statement: create_pdf_statement, user: users(:family_member))
+    assert import.process_with_ai_later
+
+    assert_not import.reload.process_with_ai_later(user: users(:family_admin))
+    assert_equal users(:family_member), import.reload.user
+  end
+
   test "process_with_ai_later does not enqueue duplicate jobs while importing" do
     import = PdfImport.create_from_statement!(statement: create_pdf_statement)
 

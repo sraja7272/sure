@@ -1,13 +1,17 @@
 class Provider::Openai::BankStatementExtractor
+  include Provider::Openai::Concerns::UsageRecorder
   include Provider::Openai::Concerns::JsonMode
 
   MAX_CHARS_PER_CHUNK = 3000
-  attr_reader :client, :pdf_content, :model, :json_mode
+  attr_reader :client, :pdf_content, :model, :custom_provider, :family, :user, :json_mode
 
-  def initialize(client:, pdf_content:, model:, json_mode: nil)
+  def initialize(client:, pdf_content:, model:, custom_provider: false, family: nil, user: nil, json_mode: nil)
     @client = client
     @pdf_content = pdf_content
     @model = model
+    @custom_provider = custom_provider
+    @family = family
+    @user = user
     @json_mode = json_mode || default_json_mode
   end
 
@@ -111,7 +115,15 @@ class Provider::Openai::BankStatementExtractor
 
       apply_json_mode(params, mode: json_mode)
 
-      response = client.chat(parameters: params)
+      begin
+        response = client.chat(parameters: params)
+      rescue => e
+        record_usage_error(model, operation: "extract_bank_statement", error: e, metadata: { pdf_size: pdf_content&.bytesize })
+        raise
+      end
+
+      record_usage(model, response.dig("usage"), operation: "extract_bank_statement", metadata: { pdf_size: pdf_content&.bytesize })
+
       content = response.dig("choices", 0, "message", "content")
 
       raise Provider::Openai::Error, "No response from AI" if content.blank?

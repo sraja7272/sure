@@ -147,6 +147,20 @@ class Provider::Anthropic::BankStatementExtractorTest < ActiveSupport::TestCase
     assert_equal "Coffee", result[:transactions].first[:name]
   end
 
+  test "usage is charged to the given user" do
+    family = families(:dylan_family)
+    response = build_response(content: [
+      tool_use_block(id: "toolu_1", name: "report_bank_statement", input: { "transactions" => [] })
+    ])
+
+    assert_difference -> { family.llm_usages.where(user: users(:family_member), operation: "extract_bank_statement").count }, 1 do
+      Provider::Anthropic::BankStatementExtractor.new(
+        client: stub_client(response), model: "claude-sonnet-4-6", pdf_content: @pdf_content,
+        family: family, user: users(:family_member)
+      ).extract
+    end
+  end
+
   private
     def stub_client(response)
       messages = mock

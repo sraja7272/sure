@@ -82,6 +82,8 @@ class Import < ApplicationRecord
   belongs_to :account, optional: true
   belongs_to :account_statement, optional: true
   belongs_to :import_session, optional: true
+  # Who uploaded it, so AI processing of the upload is charged to them.
+  belongs_to :user, optional: true
 
   before_validation :set_default_number_format
   before_validation :ensure_utf8_encoding

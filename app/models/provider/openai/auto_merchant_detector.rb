@@ -10,9 +10,9 @@ class Provider::Openai::AutoMerchantDetector
   BUSINESS_NAME_KEYS = %w[business_name name merchant_name merchant].freeze
   BUSINESS_URL_KEYS = %w[business_url url website].freeze
 
-  attr_reader :client, :model, :transactions, :user_merchants, :custom_provider, :langfuse_trace, :family, :json_mode
+  attr_reader :client, :model, :transactions, :user_merchants, :custom_provider, :langfuse_trace, :family, :user, :json_mode
 
-  def initialize(client, model: "", transactions:, user_merchants:, custom_provider: false, langfuse_trace: nil, family: nil, json_mode: nil)
+  def initialize(client, model: "", transactions:, user_merchants:, custom_provider: false, langfuse_trace: nil, family: nil, user: nil, json_mode: nil)
     @client = client
     @model = model
     @transactions = transactions
@@ -20,6 +20,7 @@ class Provider::Openai::AutoMerchantDetector
     @custom_provider = custom_provider
     @langfuse_trace = langfuse_trace
     @family = family
+    @user = user
     @json_mode = json_mode || default_json_mode
   end
 

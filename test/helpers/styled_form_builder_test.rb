@@ -31,4 +31,18 @@ class StyledFormBuilderTest < ActionView::TestCase
     assert_nil fragment.at(".form-field")
     assert_includes fragment.at("input[type=file]")["class"].split, "hidden"
   end
+
+  test "a money field shows the calculator operators by default" do
+    field = Nokogiri::HTML.fragment(@builder.money_field(:amount, label: "Amount", hide_currency: true))
+
+    assert_equal 4, field.css("[data-action*='money-field#insertOperator']").size
+  end
+
+  test "a money field leaves the operators out with hide_operators" do
+    field = Nokogiri::HTML.fragment(@builder.money_field(:amount, label: "Amount", hide_currency: true, hide_operators: true))
+
+    assert_empty field.css("[data-action*='money-field#insertOperator']")
+    assert field.at("input[name='account_statement[amount]']"), "expected the amount input to still render"
+    assert_equal "$", field.at("[data-money-field-target='symbol']").text.strip
+  end
 end

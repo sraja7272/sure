@@ -1,4 +1,6 @@
 class Family::AutoMerchantDetector
+  include Family::OwnerBatchable
+
   Error = Class.new(StandardError)
 
   def initialize(family, transaction_ids: [])
@@ -16,16 +18,10 @@ class Family::AutoMerchantDetector
       Rails.logger.info("Auto-detecting merchants for #{scope.count} transactions for family #{family.id}")
     end
 
-    result = llm_provider.auto_detect_merchants(
-      transactions: transactions_input,
-      user_merchants: user_merchants_input,
-      family: family
-    )
-
-    unless result.success?
-      Rails.logger.error("Failed to auto-detect merchants for family #{family.id}: #{result.error.message}")
-      return 0
-    end
+    # A failed request still carries the detections from the owners asked
+    # before it, and those are applied.
+    result = auto_detect_merchants_by_owner
+    Rails.logger.error("Failed to auto-detect merchants for family #{family.id}: #{result.error.message}") unless result.success?
 
     modified_count = 0
     scope.each do |transaction|
@@ -69,6 +65,17 @@ class Family::AutoMerchantDetector
       Provider::Registry.preferred_llm_provider
     end
 
+    def auto_detect_merchants_by_owner
+      request_per_owner do |owner, transactions|
+        llm_provider.auto_detect_merchants(
+          transactions: transactions_input(transactions),
+          user_merchants: user_merchants_input,
+          family: family,
+          user: owner
+        )
+      end
+    end
+
     def user_merchants_input
       family.merchants.map do |merchant|
         {
@@ -78,8 +85,8 @@ class Family::AutoMerchantDetector
       end
     end
 
-    def transactions_input
-      scope.map do |transaction|
+    def transactions_input(transactions)
+      transactions.map do |transaction|
         {
           id: transaction.id,
           amount: transaction.entry.amount.abs,

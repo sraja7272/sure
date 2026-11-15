@@ -35,6 +35,7 @@ module Provider::Anthropic::Concerns::UsageRecorder
       )
 
       family.llm_usages.create!(
+        user: user,
         provider: "anthropic",
         model: model_name,
         operation: operation,
@@ -58,6 +59,7 @@ module Provider::Anthropic::Concerns::UsageRecorder
       http_status_code = extract_http_status_code(error)
 
       family.llm_usages.create!(
+        user: user,
         provider: "anthropic",
         model: model_name,
         operation: operation,

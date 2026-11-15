@@ -4,15 +4,16 @@ class Provider::Anthropic::AutoMerchantDetector
 
   TOOL_NAME = "report_merchants".freeze
 
-  attr_reader :client, :model, :transactions, :user_merchants, :langfuse_trace, :family
+  attr_reader :client, :model, :transactions, :user_merchants, :langfuse_trace, :family, :user
 
-  def initialize(client, model:, transactions: [], user_merchants: [], langfuse_trace: nil, family: nil)
+  def initialize(client, model:, transactions: [], user_merchants: [], langfuse_trace: nil, family: nil, user: nil)
     @client = client
     @model = model
     @transactions = transactions
     @user_merchants = user_merchants
     @langfuse_trace = langfuse_trace
     @family = family
+    @user = user
   end
 
   def auto_detect_merchants

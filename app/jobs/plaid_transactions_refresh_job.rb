@@ -16,10 +16,28 @@ class PlaidTransactionsRefreshJob < ApplicationJob
         family: plaid_item.family,
         metadata: { error_class: error.class.name }
       )
+    else
+      # Plaid bills only refresh calls that succeed.
+      record_refresh(plaid_item)
     end
 
     PlaidTransactionsRefreshPollJob
       .set(wait: PlaidTransactionsRefreshPollJob::POLL_INTERVAL)
       .perform_later(plaid_item, cursor: cursor)
   end
+
+  private
+    def record_refresh(plaid_item)
+      PlaidItemUsage.increment_refresh!(plaid_item)
+    rescue => error
+      DebugLogEntry.capture(
+        category: "provider_sync",
+        level: "warn",
+        message: "Plaid transaction refresh call could not be counted",
+        source: self.class.name,
+        provider_key: "plaid",
+        family: plaid_item.family,
+        metadata: { plaid_item_id: plaid_item.id, error_class: error.class.name }
+      )
+    end
 end

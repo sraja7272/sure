@@ -12,6 +12,55 @@ class Family::AutoMerchantDetectorTest < ActiveSupport::TestCase
     Setting.stubs(:brand_fetch_logo_size).returns(40)
   end
 
+  test "makes one provider call per account owner" do
+    @account.update!(owner: users(:family_admin))
+    member_account = @family.accounts.create!(name: "Member", balance: 0, currency: "USD", accountable: Depository.new, owner: users(:family_member))
+    admin_txn = create_transaction(account: @account, name: "McDonalds").transaction
+    member_txn = create_transaction(account: member_account, name: "Chipotle").transaction
+
+    { users(:family_admin) => [ admin_txn, "McDonalds" ], users(:family_member) => [ member_txn, "Chipotle" ] }.each do |owner, (txn, name)|
+      @llm_provider.expects(:auto_detect_merchants)
+                   .with { |**kwargs| kwargs[:user] == owner && kwargs[:transactions].map { |t| t[:id] } == [ txn.id ] }
+                   .returns(provider_success_response([
+                     AutoDetectedMerchant.new(transaction_id: txn.id, business_name: name, business_url: "#{name.downcase}.com")
+                   ])).once
+    end
+
+    assert_equal 2, Family::AutoMerchantDetector.new(@family, transaction_ids: [ admin_txn.id, member_txn.id ]).auto_detect
+  end
+
+  test "a failed owner's request still applies the detections already paid for" do
+    @account.update!(owner: users(:family_admin))
+    member_account = @family.accounts.create!(name: "Member", balance: 0, currency: "USD", accountable: Depository.new, owner: users(:family_member))
+    admin_txn = create_transaction(account: @account, name: "McDonalds").transaction
+    member_txn = create_transaction(account: member_account, name: "Chipotle").transaction
+    ids = [ admin_txn.id, member_txn.id ]
+
+    # Answers the first owner's request and fails the second, whichever owner
+    # comes first.
+    requested = []
+    provider = Object.new
+    provider.define_singleton_method(:auto_detect_merchants) do |transactions:, **|
+      requested << transactions.map { |t| t[:id] }
+      if requested.size == 1
+        Provider::Response.new(success?: true, error: nil, data: transactions.map { |t|
+          AutoDetectedMerchant.new(transaction_id: t[:id], business_name: "Detected #{t[:id]}", business_url: "detected.example")
+        })
+      else
+        Provider::Response.new(success?: false, data: nil, error: Provider::Error.new("Rate limited"))
+      end
+    end
+    Provider::Registry.stubs(:get_provider).with(:openai).returns(provider)
+
+    assert_equal 1, Family::AutoMerchantDetector.new(@family, transaction_ids: ids).auto_detect
+    assert_equal 2, requested.size
+
+    answered_id = requested.first.sole
+    unanswered_id = (ids - [ answered_id ]).sole
+    assert_equal "Detected #{answered_id}", Transaction.find(answered_id).merchant&.name
+    assert_nil Transaction.find(unanswered_id).merchant
+  end
+
   test "auto detects transaction merchants" do
     txn1 = create_transaction(account: @account, name: "McDonalds").transaction
     txn2 = create_transaction(account: @account, name: "Chipotle").transaction

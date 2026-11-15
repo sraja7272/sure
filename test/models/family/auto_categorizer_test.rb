@@ -38,6 +38,89 @@ class Family::AutoCategorizerTest < ActiveSupport::TestCase
     assert_equal 1, @account.transactions.reload.enrichable(:category_id).count
   end
 
+  test "a batch from one owner's accounts is one provider call charged to that owner" do
+    @account.update!(owner: users(:family_member))
+    txn1 = create_transaction(account: @account, name: "McDonalds").transaction
+    txn2 = create_transaction(account: @account, name: "Amazon").transaction
+    category = @family.categories.create!(name: "Test category")
+
+    @llm_provider.expects(:auto_categorize)
+                 .with { |**kwargs| kwargs[:user] == users(:family_member) && kwargs[:transactions].map { |t| t[:id] }.sort == [ txn1.id, txn2.id ].sort }
+                 .returns(provider_success_response([
+                   AutoCategorization.new(transaction_id: txn1.id, category_name: category.name),
+                   AutoCategorization.new(transaction_id: txn2.id, category_name: category.name)
+                 ])).once
+
+    assert_equal 2, Family::AutoCategorizer.new(@family, transaction_ids: [ txn1.id, txn2.id ]).auto_categorize
+  end
+
+  test "a mixed batch makes one provider call per account owner, including ownerless accounts" do
+    @account.update!(owner: users(:family_admin))
+    member_account = @family.accounts.create!(name: "Member", balance: 0, currency: "USD", accountable: Depository.new, owner: users(:family_member))
+    ownerless_account = @family.accounts.create!(name: "Ownerless", balance: 0, currency: "USD", accountable: Depository.new)
+    ownerless_account.update_column(:owner_id, nil)
+
+    admin_txn = create_transaction(account: @account, name: "McDonalds").transaction
+    member_txn = create_transaction(account: member_account, name: "Amazon").transaction
+    ownerless_txn = create_transaction(account: ownerless_account, name: "Netflix").transaction
+    category = @family.categories.create!(name: "Test category")
+
+    { users(:family_admin) => admin_txn, users(:family_member) => member_txn, nil => ownerless_txn }.each do |owner, txn|
+      @llm_provider.expects(:auto_categorize)
+                   .with { |**kwargs| kwargs[:user] == owner && kwargs[:transactions].map { |t| t[:id] } == [ txn.id ] }
+                   .returns(provider_success_response([ AutoCategorization.new(transaction_id: txn.id, category_name: category.name) ]))
+                   .once
+    end
+
+    assert_equal 3, Family::AutoCategorizer.new(@family, transaction_ids: [ admin_txn.id, member_txn.id, ownerless_txn.id ]).auto_categorize
+    assert_equal [ category ] * 3, [ admin_txn, member_txn, ownerless_txn ].map { |t| t.reload.category }
+  end
+
+  test "a failed owner's request still applies the answers already paid for, and a retry skips them" do
+    @account.update!(owner: users(:family_admin))
+    member_account = @family.accounts.create!(name: "Member", balance: 0, currency: "USD", accountable: Depository.new, owner: users(:family_member))
+    admin_txn = create_transaction(account: @account, name: "McDonalds").transaction
+    member_txn = create_transaction(account: member_account, name: "Amazon").transaction
+    category = @family.categories.create!(name: "Test category")
+    ids = [ admin_txn.id, member_txn.id ]
+
+    # Answers the first owner's request and fails the second, whichever owner
+    # comes first.
+    requested = []
+    provider = Object.new
+    provider.define_singleton_method(:auto_categorize) do |transactions:, **|
+      requested << transactions.map { |t| t[:id] }
+      if requested.size == 1
+        Provider::Response.new(success?: true, error: nil,
+                               data: transactions.map { |t| AutoCategorization.new(transaction_id: t[:id], category_name: category.name) })
+      else
+        Provider::Response.new(success?: false, data: nil, error: Provider::Error.new("Rate limited"))
+      end
+    end
+    Provider::Registry.stubs(:preferred_llm_provider).returns(provider)
+
+    error = assert_raises(Family::AutoCategorizer::Error) do
+      Family::AutoCategorizer.new(@family, transaction_ids: ids).auto_categorize
+    end
+    assert_equal "Failed to auto-categorize transactions: Rate limited", error.message
+    assert_equal 2, requested.size
+
+    answered_id = requested.first.sole
+    unanswered_id = (ids - [ answered_id ]).sole
+    assert_equal category, Transaction.find(answered_id).category
+    assert_nil Transaction.find(unanswered_id).category
+    assert_equal [ answered_id ], DebugLogEntry.find_by!(message: "AI categorization stopped at a failed request").metadata["categorized_transaction_ids"]
+
+    @llm_provider.expects(:auto_categorize)
+                 .with { |**kwargs| kwargs[:transactions].map { |t| t[:id] } == [ unanswered_id ] }
+                 .returns(provider_success_response([ AutoCategorization.new(transaction_id: unanswered_id, category_name: category.name) ]))
+                 .once
+    Provider::Registry.stubs(:preferred_llm_provider).returns(@llm_provider)
+
+    assert_equal 1, Family::AutoCategorizer.new(@family, transaction_ids: ids).auto_categorize
+    assert_equal category, Transaction.find(unanswered_id).category
+  end
+
   test "raises when provider returns an unsuccessful response" do
     txn = create_transaction(account: @account, name: "Coffee shop").transaction
     @family.categories.create!(name: "Coffee")
@@ -395,6 +478,36 @@ class Family::AutoCategorizerTest < ActiveSupport::TestCase
     assert_equal applied.name, comparison.applied_category_name
     assert_equal shadowed.name, comparison.shadow_category_name
     assert_in_delta 0.88, comparison.shadow_confidence, 0.001
+  end
+
+  test "the shadow provider is one request charged to no one" do
+    # Its answers are never applied, so no account owner is charged for it.
+    @family.update!(categorization_shadow_rate: 1.0)
+    @account.update!(owner: users(:family_member))
+    admin_account = @family.accounts.create!(name: "Admin", balance: 0, currency: "USD", accountable: Depository.new, owner: users(:family_admin))
+    member_txn = create_transaction(account: @account, name: "Blue Bottle Coffee").transaction
+    admin_txn = create_transaction(account: admin_account, name: "Starbucks").transaction
+    category = @family.categories.create!(name: "Coffee")
+
+    openai = Provider::Openai.allocate
+    Provider::Registry.stubs(:preferred_llm_provider).returns(openai)
+    [ [ users(:family_member), member_txn ], [ users(:family_admin), admin_txn ] ].each do |owner, txn|
+      openai.expects(:auto_categorize)
+            .with { |**kwargs| kwargs[:user] == owner && kwargs[:transactions].map { |t| t[:id] } == [ txn.id ] }
+            .returns(provider_success_response([ AutoCategorization.new(transaction_id: txn.id, category_name: category.name) ]))
+            .once
+    end
+
+    jev = Provider::Jev.allocate
+    Provider::Registry.stubs(:get_provider).with(:jev).returns(jev)
+    jev.expects(:auto_categorize)
+       .with { |**kwargs| kwargs[:user].nil? && kwargs[:transactions].map { |t| t[:id] }.sort == [ member_txn.id, admin_txn.id ].sort }
+       .returns(provider_success_response([]))
+       .once
+
+    assert_difference "CategorizationComparison.count", 2 do
+      Family::AutoCategorizer.new(@family, transaction_ids: [ member_txn.id, admin_txn.id ]).auto_categorize
+    end
   end
 
   test "does not score a missing shadow answer as agreement" do

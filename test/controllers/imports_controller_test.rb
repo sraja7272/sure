@@ -255,6 +255,7 @@ class ImportsControllerTest < ActionDispatch::IntegrationTest
     statement = AccountStatement.order(:created_at).last
     created_import = PdfImport.order(:created_at).last
     assert_equal statement, created_import.account_statement
+    assert_equal @user, created_import.user
     assert_not created_import.pdf_file.attached?
     assert_redirected_to import_url(created_import)
     assert_equal I18n.t("imports.create.pdf_processing"), flash[:notice]
@@ -301,6 +302,32 @@ class ImportsControllerTest < ActionDispatch::IntegrationTest
     created_import = PdfImport.order(:created_at).last
     assert_equal statement, created_import.account_statement
     assert_redirected_to import_url(created_import)
+  end
+
+  test "a duplicate upload that restarts processing of a reused import is charged to the uploader" do
+    statement = AccountStatement.create_from_upload!(
+      family: @user.family,
+      account: nil,
+      file: uploaded_file(
+        filename: "existing_statement.pdf",
+        content_type: "application/pdf",
+        content: file_fixture("imports/sample_bank_statement.pdf").binread
+      )
+    )
+    reused_import = PdfImport.create_from_statement!(statement: statement, user: users(:family_member))
+
+    assert_no_difference "Import.where(type: 'PdfImport').count" do
+      assert_enqueued_with(job: ProcessPdfJob, args: [ reused_import ]) do
+        post imports_url, params: {
+          import: {
+            import_file: file_fixture_upload("imports/sample_bank_statement.pdf", "application/pdf")
+          }
+        }
+      end
+    end
+
+    assert_equal @user, reused_import.reload.user
+    assert_redirected_to import_url(reused_import)
   end
 
   test "duplicate pdf import does not enqueue processing twice for reused import" do

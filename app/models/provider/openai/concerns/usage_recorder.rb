@@ -29,6 +29,7 @@ module Provider::Openai::Concerns::UsageRecorder
 
       inferred_provider = LlmUsage.infer_provider(model_name)
       family.llm_usages.create!(
+        user: user,
         provider: inferred_provider,
         model: model_name,
         operation: operation,
@@ -60,6 +61,7 @@ module Provider::Openai::Concerns::UsageRecorder
 
       inferred_provider = LlmUsage.infer_provider(model_name)
       family.llm_usages.create!(
+        user: user,
         provider: inferred_provider,
         model: model_name,
         operation: operation,

@@ -32,6 +32,7 @@ module Family::PlaidConnectable
       owner: Current.user
     )
 
+    plaid_item.record_usage
     plaid_item.sync_later
 
     plaid_item

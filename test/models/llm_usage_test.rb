@@ -372,4 +372,30 @@ class LlmUsageTest < ActiveSupport::TestCase
     )
     assert_in_delta 0.0, cost, 0.0001
   end
+
+  test "keeps a user from the row's family" do
+    usage = families(:dylan_family).llm_usages.create!(usage_attributes.merge(user: users(:family_member)))
+
+    assert_equal users(:family_member), usage.reload.user
+  end
+
+  test "drops a user from another family instead of charging them" do
+    usage = families(:dylan_family).llm_usages.create!(usage_attributes.merge(user: users(:empty)))
+
+    assert_nil usage.reload.user_id
+  end
+
+  test "deleting the user keeps the usage row" do
+    user = users(:family_member)
+    usage = families(:dylan_family).llm_usages.create!(usage_attributes.merge(user: user))
+
+    user.destroy!
+
+    assert_nil usage.reload.user_id
+  end
+
+  private
+    def usage_attributes
+      { provider: "openai", model: "gpt-4.1", operation: "chat", prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 }
+    end
 end

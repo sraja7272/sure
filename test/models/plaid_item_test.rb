@@ -1,4 +1,5 @@
 require "test_helper"
+require "ostruct"
 
 class PlaidItemTest < ActiveSupport::TestCase
   include SyncableInterfaceTest
@@ -211,10 +212,73 @@ class PlaidItemTest < ActiveSupport::TestCase
     end
   end
 
+  test "destroy records the item's usage for the month before removing it" do
+    @plaid_provider.expects(:remove_item).once
+    period = PlaidItemUsage.current_period
+    assert_not PlaidItemUsage.exists?(plaid_item_id: @plaid_item.id, period: period)
+
+    @plaid_item.destroy!
+
+    usage = PlaidItemUsage.find_by!(plaid_item_id: @plaid_item.id, period: period)
+    assert_equal @plaid_item.family_id, usage.family_id
+    assert_equal %w[investments liabilities transactions], usage.billed_products.sort
+  end
+
+  # A database error aborts the surrounding Postgres transaction unless it is
+  # confined to a savepoint, so the DELETE after it would fail too.
+  test "destroy still removes the item when the usage row cannot be written" do
+    @plaid_provider.expects(:remove_item).once
+    @plaid_item.owner_id = SecureRandom.uuid
+
+    assert_difference -> { PlaidItem.count } => -1, -> { DebugLogEntry.count } => 1 do
+      @plaid_item.destroy!
+    end
+
+    assert_not PlaidItemUsage.exists?(plaid_item_id: @plaid_item.id)
+  end
+
+  test "destroying the family does not record usage for its items" do
+    @plaid_provider.expects(:remove_item).once
+    family = Family.create!(name: "Closing Family")
+    item = family.plaid_items.create!(name: "Closing Bank", plaid_id: "item_closing", access_token: "token_closing", billed_products: [ "transactions" ])
+    PlaidItemUsage.expects(:record!).never
+
+    family.destroy!
+
+    assert_not Family.exists?(family.id)
+    assert_not PlaidItem.exists?(item.id)
+  end
+
   test "user sync preserves follow-up sync while requesting provider refresh" do
     @plaid_item.expects(:request_transactions_refresh_later).once
     @plaid_item.expects(:sync_later_with_follow_up).once
 
     @plaid_item.sync_later_with_provider_refresh
+  end
+
+  test "upsert_plaid_snapshot! records the item's usage for the month" do
+    snapshot = OpenStruct.new(available_products: [ "liabilities" ], billed_products: [ "transactions", "investments" ])
+
+    assert_difference "PlaidItemUsage.count", 1 do
+      @plaid_item.upsert_plaid_snapshot!(snapshot)
+    end
+
+    usage = PlaidItemUsage.find_by!(plaid_item_id: @plaid_item.id, period: PlaidItemUsage.current_period)
+    assert_equal %w[investments transactions], usage.billed_products.sort
+  end
+
+  test "upsert_plaid_snapshot! still saves when recording usage fails" do
+    snapshot = OpenStruct.new(available_products: [], billed_products: [ "transactions" ])
+    PlaidItemUsage.stubs(:record!).raises(ActiveRecord::StatementInvalid, "boom")
+
+    assert_difference "DebugLogEntry.count", 1 do
+      @plaid_item.upsert_plaid_snapshot!(snapshot)
+    end
+
+    assert_equal [ "transactions" ], @plaid_item.reload.billed_products
+    entry = DebugLogEntry.order(:created_at).last
+    assert_equal "plaid", entry.provider_key
+    assert_equal @plaid_item.family, entry.family
+    assert_equal "ActiveRecord::StatementInvalid", entry.metadata["error_class"]
   end
 end

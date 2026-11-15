@@ -29,10 +29,12 @@ class PlaidItem::Importer
     end
 
     def fetch_and_import_item_data
+      # Saved before the institution request so a failure there does not lose
+      # billed_products, which the month's usage row is priced from.
       item_data = plaid_provider.get_item(plaid_item.access_token).item
-      institution_data = plaid_provider.get_institution(item_data.institution_id).institution
-
       plaid_item.upsert_plaid_snapshot!(item_data)
+
+      institution_data = plaid_provider.get_institution(item_data.institution_id).institution
       plaid_item.upsert_plaid_institution_snapshot!(institution_data)
     end
 

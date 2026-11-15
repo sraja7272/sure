@@ -213,7 +213,7 @@ class Provider::Openai < Provider
     [ context_window - max_response_tokens - system_prompt_reserve, 256 ].max
   end
 
-  def auto_categorize(transactions: [], user_categories: [], model: "", family: nil, json_mode: nil)
+  def auto_categorize(transactions: [], user_categories: [], model: "", family: nil, user: nil, json_mode: nil)
     with_provider_response do
       if user_categories.blank?
         family_id = family&.id || "unknown"
@@ -239,6 +239,7 @@ class Provider::Openai < Provider
           custom_provider: custom_provider?,
           langfuse_trace: trace,
           family: family,
+          user: user,
           json_mode: json_mode
         ).auto_categorize
       end
@@ -252,7 +253,7 @@ class Provider::Openai < Provider
     end
   end
 
-  def suggest_bill_setup(charges: [], categories: [], current_config: nil, model: "", family: nil)
+  def suggest_bill_setup(charges: [], categories: [], current_config: nil, model: "", family: nil, user: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
 
@@ -268,7 +269,8 @@ class Provider::Openai < Provider
         categories: categories,
         current_config: current_config,
         langfuse_trace: trace,
-        family: family
+        family: family,
+        user: user
       ).suggest
 
       finish_langfuse_trace(trace: trace, output: result.to_h)
@@ -280,7 +282,7 @@ class Provider::Openai < Provider
     end
   end
 
-  def auto_detect_merchants(transactions: [], user_merchants: [], model: "", family: nil, json_mode: nil)
+  def auto_detect_merchants(transactions: [], user_merchants: [], model: "", family: nil, user: nil, json_mode: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
 
@@ -300,6 +302,7 @@ class Provider::Openai < Provider
           custom_provider: custom_provider?,
           langfuse_trace: trace,
           family: family,
+          user: user,
           json_mode: json_mode
         ).auto_detect_merchants
       end
@@ -313,7 +316,7 @@ class Provider::Openai < Provider
     end
   end
 
-  def enhance_provider_merchants(merchants: [], model: "", family: nil, json_mode: nil)
+  def enhance_provider_merchants(merchants: [], model: "", family: nil, user: nil, json_mode: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
 
@@ -332,6 +335,7 @@ class Provider::Openai < Provider
           custom_provider: custom_provider?,
           langfuse_trace: trace,
           family: family,
+          user: user,
           json_mode: json_mode
         ).enhance_merchants
       end
@@ -361,8 +365,9 @@ class Provider::Openai < Provider
   # @param pdf_content [String] PDF bytes
   # @param model [String] optional override of the configured model
   # @param family [Family, nil] usage attribution
+  # @param user [User, nil] person the usage is charged to
   # @return [Provider::Response] structured result or provider failure
-  def process_pdf(pdf_content:, model: "", family: nil, json_mode: nil)
+  def process_pdf(pdf_content:, model: "", family: nil, user: nil, json_mode: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
       raise Error, "Model does not support PDF/vision processing: #{effective_model}" unless supports_pdf_processing?(model: effective_model)
@@ -387,6 +392,7 @@ class Provider::Openai < Provider
         custom_provider: custom_provider?,
         langfuse_trace: trace,
         family: family,
+        user: user,
         max_response_tokens: response_limit,
         json_mode: json_mode
       ).process
@@ -400,7 +406,7 @@ class Provider::Openai < Provider
     end
   end
 
-  def extract_bank_statement(pdf_content:, model: "", family: nil, json_mode: nil)
+  def extract_bank_statement(pdf_content:, model: "", family: nil, user: nil, json_mode: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
 
@@ -413,6 +419,9 @@ class Provider::Openai < Provider
         client: client,
         pdf_content: pdf_content,
         model: effective_model,
+        custom_provider: custom_provider?,
+        family: family,
+        user: user,
         json_mode: json_mode
       ).extract
 
@@ -438,7 +447,8 @@ class Provider::Openai < Provider
     previous_response_id: nil,
     session_id: nil,
     user_identifier: nil,
-    family: nil
+    family: nil,
+    user: nil
   )
     if supports_responses_endpoint?
       # Native path uses the Responses API which chains history via
@@ -455,7 +465,8 @@ class Provider::Openai < Provider
         previous_response_id: previous_response_id,
         session_id: session_id,
         user_identifier: user_identifier,
-        family: family
+        family: family,
+        user: user
       )
     else
       generic_chat_response(
@@ -469,7 +480,8 @@ class Provider::Openai < Provider
         streamer: streamer,
         session_id: session_id,
         user_identifier: user_identifier,
-        family: family
+        family: family,
+        user: user
       )
     end
   end
@@ -530,7 +542,8 @@ class Provider::Openai < Provider
       previous_response_id: nil,
       session_id: nil,
       user_identifier: nil,
-      family: nil
+      family: nil,
+      user: nil
     )
       with_provider_response do
         session_client = with_session_headers(session_id: session_id)
@@ -600,7 +613,7 @@ class Provider::Openai < Provider
               user_identifier: user_identifier,
               start_time: start_time
             )
-            record_llm_usage(family: family, model: model, operation: "chat", usage: usage)
+            record_llm_usage(family: family, user: user, model: model, operation: "chat", usage: usage)
             response
           else
             parsed = ChatParser.new(raw_response).parsed
@@ -615,7 +628,7 @@ class Provider::Openai < Provider
               user_identifier: user_identifier,
               start_time: start_time
             )
-            record_llm_usage(family: family, model: model, operation: "chat", usage: raw_response["usage"])
+            record_llm_usage(family: family, user: user, model: model, operation: "chat", usage: raw_response["usage"])
             parsed
           end
         rescue => e
@@ -628,7 +641,7 @@ class Provider::Openai < Provider
             user_identifier: user_identifier,
             start_time: start_time
           )
-          record_llm_usage(family: family, model: model, operation: "chat", error: e)
+          record_llm_usage(family: family, user: user, model: model, operation: "chat", error: e)
           raise
         end
       end
@@ -645,7 +658,8 @@ class Provider::Openai < Provider
       streamer: nil,
       session_id: nil,
       user_identifier: nil,
-      family: nil
+      family: nil,
+      user: nil
     )
       with_provider_response do
         session_client = with_session_headers(session_id: session_id)
@@ -686,7 +700,7 @@ class Provider::Openai < Provider
             start_time: start_time
           )
 
-          record_llm_usage(family: family, model: model, operation: "chat", usage: raw_response["usage"])
+          record_llm_usage(family: family, user: user, model: model, operation: "chat", usage: raw_response["usage"])
 
           # If a streamer was provided, manually call it with the parsed response
           # to maintain the same contract as the streaming version
@@ -713,7 +727,7 @@ class Provider::Openai < Provider
             user_identifier: user_identifier,
             start_time: start_time
           )
-          record_llm_usage(family: family, model: model, operation: "chat", error: e)
+          record_llm_usage(family: family, user: user, model: model, operation: "chat", error: e)
           raise
         end
       end
@@ -843,7 +857,7 @@ class Provider::Openai < Provider
       Rails.logger.warn("Langfuse logging failed: #{e.message}\n#{e.full_message}")
     end
 
-    def record_llm_usage(family:, model:, operation:, usage: nil, error: nil)
+    def record_llm_usage(family:, model:, operation:, user: nil, usage: nil, error: nil)
       return unless family
 
       # For error cases, record with zero tokens
@@ -855,6 +869,7 @@ class Provider::Openai < Provider
 
         inferred_provider = LlmUsage.infer_provider(model)
         family.llm_usages.create!(
+          user: user,
           provider: inferred_provider,
           model: model,
           operation: operation,
@@ -898,6 +913,7 @@ class Provider::Openai < Provider
 
       inferred_provider = LlmUsage.infer_provider(model)
       family.llm_usages.create!(
+        user: user,
         provider: inferred_provider,
         model: model,
         operation: operation,

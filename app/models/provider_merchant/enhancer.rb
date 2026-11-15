@@ -1,7 +1,8 @@
 class ProviderMerchant::Enhancer
-  def initialize(family, merchant_ids: nil)
+  def initialize(family, merchant_ids: nil, user: nil)
     @family = family
     @merchant_ids = merchant_ids
+    @user = user
   end
 
   # The unenhanced merchant ids, one batch per LLM call.
@@ -27,7 +28,8 @@ class ProviderMerchant::Enhancer
     unenhanced_merchants.each_slice(Provider::LlmConcept.max_items_per_call) do |batch|
       result = llm_provider.enhance_provider_merchants(
         merchants: batch.map { |m| { id: m.id, name: m.name } },
-        family: @family
+        family: @family,
+        user: @user
       )
 
       next unless result.success?

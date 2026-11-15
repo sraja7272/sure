@@ -1,5 +1,9 @@
 class LlmUsage < ApplicationRecord
   belongs_to :family
+  # The person the cost is charged to; nil for system work or a user outside the family.
+  belongs_to :user, optional: true
+
+  before_validation :drop_user_outside_family
 
   validates :provider, :model, :operation, presence: true
   validates :prompt_tokens, :completion_tokens, :total_tokens, presence: true, numericality: { greater_than_or_equal_to: 0 }
@@ -201,4 +205,11 @@ class LlmUsage < ApplicationRecord
       apply_long_context_pricing: false
     )
   end
+
+  private
+    # Recording must never fail over attribution, so a mismatched user is
+    # dropped rather than rejected.
+    def drop_user_outside_family
+      self.user = nil if user && user.family_id != family_id
+    end
 end

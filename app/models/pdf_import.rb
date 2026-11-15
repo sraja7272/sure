@@ -67,20 +67,20 @@ class PdfImport < Import
         prepared_upload: AccountStatement.prepare_upload!(file)
       )
 
-      create_from_statement!(statement: statement)
+      create_from_statement!(statement: statement, user: user)
     rescue AccountStatement::DuplicateUploadError => e
       raise unless e.statement.manageable_by?(user)
 
-      create_from_statement!(statement: e.statement)
+      create_from_statement!(statement: e.statement, user: user)
     end
 
-    def create_from_statement!(statement:)
+    def create_from_statement!(statement:, user: nil)
       reusable_import = statement.latest_reusable_pdf_import
       return reusable_import if reusable_import &&
                                 reusable_import.account_id == statement.account_id &&
                                 reusable_import.date_format == statement.family.date_format
 
-      create!(family: statement.family, account: statement.account, account_statement: statement, date_format: statement.family.date_format, status: :pending)
+      create!(family: statement.family, user: user, account: statement.account, account_statement: statement, date_format: statement.family.date_format, status: :pending)
     end
   end
 
@@ -200,8 +200,10 @@ class PdfImport < Import
     ai_summary.present?
   end
 
-  def process_with_ai_later
-    return false unless with_lock { pending? && !ai_processed? && rows_count.zero? && pdf_uploaded? && update!(status: :importing) }
+  # `user` is who the AI processing is charged to: whoever starts it, which for
+  # a reused import can be someone other than its first uploader.
+  def process_with_ai_later(user: self.user)
+    return false unless with_lock { pending? && !ai_processed? && rows_count.zero? && pdf_uploaded? && update!(status: :importing, user: user) }
 
     begin
       ProcessPdfJob.perform_later(self)
@@ -222,7 +224,8 @@ class PdfImport < Import
 
     response = provider.process_pdf(
       pdf_content: pdf_file_content,
-      family: family
+      family: family,
+      user: user
     )
 
     unless response.success?
@@ -250,7 +253,8 @@ class PdfImport < Import
 
     response = provider.extract_bank_statement(
       pdf_content: pdf_file_content,
-      family: family
+      family: family,
+      user: user
     )
 
     unless response.success?

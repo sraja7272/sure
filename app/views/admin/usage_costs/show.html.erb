@@ -1,0 +1,85 @@
+<%= content_for :page_title, t(".page_title") %>
+
+<div class="space-y-4">
+  <%= settings_section title: l(@report.month, format: :month_year), subtitle: t(".subtitle") do %>
+    <div class="flex flex-wrap items-end justify-between gap-2">
+      <%= render "shared/usage_cost_month_nav", report: @report %>
+      <%= render DS::Link.new(
+        text: t(".download_csv"),
+        icon: "download",
+        href: admin_usage_costs_path(month: @report.period, format: :csv),
+        variant: :outline,
+        data: { turbo: false }
+      ) %>
+    </div>
+
+    <%= render "shared/usage_cost_summary", totals: @report.grand_total %>
+
+    <% if @report.groups.empty? %>
+      <%= render DS::EmptyState.new(icon: "receipt", title: t(".no_usage")) %>
+    <% else %>
+      <% @report.groups.each do |group| %>
+        <% family_name = group.family.name.presence || t(".unnamed_family") %>
+        <%= render layout: "shared/usage_cost_section", locals: { title: family_name } do %>
+          <%= render DS::Table.new(
+            rows: group.lines + [ group.subtotal ],
+            label: family_name,
+            row_class: ->(row) { "font-medium bg-container-inset" if row.is_a?(UsageCostReport::Totals) }
+          ) do |table| %>
+            <% table.with_column(t(".person"), row_header: true) do |row| %>
+              <% if row.is_a?(UsageCostReport::Totals) %>
+                <%= t(".subtotal") %>
+              <% elsif row.unassigned? %>
+                <span class="text-secondary"><%= t(".unassigned") %></span>
+              <% else %>
+                <p><%= row.user.display_name %></p>
+                <p class="text-xs font-normal text-secondary"><%= row.user.email %></p>
+              <% end %>
+            <% end %>
+            <% table.with_column(t(".ai_requests"), numeric: true) { |row| render "shared/usage_cost_requests", requests: row.ai_requests, unpriced: row.ai_unpriced_requests } %>
+            <% table.with_column(t(".ai_cost"), numeric: true) { |row| format_usage_cost(row.ai_cost, precision: 4) } %>
+            <% table.with_column(t(".plaid_items"), numeric: true) { |row| number_with_delimiter(row.plaid_items).to_s } %>
+            <% table.with_column(t(".plaid_cost"), numeric: true) { |row| format_usage_cost(row.plaid_cost) } %>
+            <% table.with_column(t(".total"), numeric: true) { |row| format_usage_cost(row.total) } %>
+          <% end %>
+        <% end %>
+      <% end %>
+    <% end %>
+
+    <%= render DS::Note.new(title: t(".estimates_title")) do %>
+      <p><%= t(".estimates_body") %></p>
+    <% end %>
+  <% end %>
+
+  <%= settings_section title: t(".rates_title"), subtitle: t(".rates_subtitle") do %>
+    <%= styled_form_with url: admin_usage_costs_path, method: :patch, scope: :plaid_rates, class: "space-y-4" do |form| %>
+      <%= hidden_field_tag :month, @report.period %>
+
+      <% UsageCostsHelper::PLAID_RATE_GROUPS.each do |product, keys| %>
+        <fieldset class="space-y-2">
+          <legend class="text-sm font-medium text-primary mb-2"><%= t("usage_costs.products.#{product}") %></legend>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <% keys.each do |key| %>
+              <%= form.money_field key,
+                    label: t(".rates.#{key}"),
+                    hide_currency: true,
+                    hide_operators: true,
+                    currency_value_override: "USD",
+                    value: @rates[key],
+                    precision: plaid_rate_precision(@rates[key]),
+                    placeholder: "0.00",
+                    min: 0,
+                    step: "any",
+                    required: true %>
+            <% end %>
+          </div>
+        </fieldset>
+      <% end %>
+
+      <%= form.submit t(".save_rates") %>
+    <% end %>
+
+    <p class="text-xs text-secondary"><%= t(".rates_unused_products") %></p>
+  <% end %>
+</div>

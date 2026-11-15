@@ -4,14 +4,15 @@ class Provider::Anthropic::ProviderMerchantEnhancer
 
   TOOL_NAME = "report_enhancements".freeze
 
-  attr_reader :client, :model, :merchants, :langfuse_trace, :family
+  attr_reader :client, :model, :merchants, :langfuse_trace, :family, :user
 
-  def initialize(client, model:, merchants: [], langfuse_trace: nil, family: nil)
+  def initialize(client, model:, merchants: [], langfuse_trace: nil, family: nil, user: nil)
     @client = client
     @model = model
     @merchants = merchants
     @langfuse_trace = langfuse_trace
     @family = family
+    @user = user
   end
 
   def enhance_merchants

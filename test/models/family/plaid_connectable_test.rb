@@ -37,6 +37,30 @@ class Family::PlaidConnectableTest < ActiveSupport::TestCase
     assert_equal "Example Bank", item.name
   end
 
+  test "create_plaid_item! records the new item's usage for the month" do
+    stub_exchange
+    Current.stubs(:user).returns(users(:family_member))
+
+    item = @family.create_plaid_item!(public_token: "public-sandbox-1234", item_name: "Example Bank", region: :us)
+
+    usage = PlaidItemUsage.find_by!(plaid_item_id: item.id, period: PlaidItemUsage.current_period)
+    assert_equal @family, usage.family
+    assert_equal users(:family_member), usage.user
+    assert_equal "Example Bank", usage.institution_name
+  end
+
+  test "create_plaid_item! still creates the item when recording usage fails" do
+    stub_exchange
+    PlaidItemUsage.stubs(:record!).raises(ActiveRecord::StatementInvalid, "boom")
+
+    item = nil
+    assert_difference "DebugLogEntry.count", 1 do
+      item = @family.create_plaid_item!(public_token: "public-sandbox-1234", item_name: "Example Bank", region: :us)
+    end
+
+    assert item.persisted?
+  end
+
   private
     def stub_exchange
       @provider.expects(:exchange_public_token).returns(

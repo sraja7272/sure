@@ -7,14 +7,15 @@ class Provider::Anthropic::BankStatementExtractor
   # Mirrors Provider::Anthropic::PdfProcessor::MAX_PDF_BYTES.
   MAX_PDF_BYTES = 32 * 1024 * 1024
 
-  attr_reader :client, :model, :pdf_content, :langfuse_trace, :family
+  attr_reader :client, :model, :pdf_content, :langfuse_trace, :family, :user
 
-  def initialize(client:, model:, pdf_content:, langfuse_trace: nil, family: nil)
+  def initialize(client:, model:, pdf_content:, langfuse_trace: nil, family: nil, user: nil)
     @client = client
     @model = model
     @pdf_content = pdf_content
     @langfuse_trace = langfuse_trace
     @family = family
+    @user = user
   end
 
   def extract

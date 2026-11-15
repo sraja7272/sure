@@ -19,6 +19,7 @@ class PlaidItem < ApplicationRecord
   validates :name, presence: true
   validates :access_token, presence: true, on: :create
 
+  before_destroy :record_usage_before_removal
   before_destroy :remove_plaid_item
 
   belongs_to :family
@@ -147,6 +148,24 @@ class PlaidItem < ApplicationRecord
     )
 
     save!
+    record_usage
+  end
+
+  # Never raises: a ledger failure must not break a sync, a new connection or a
+  # deletion. The savepoint keeps a database error from aborting the caller's
+  # transaction.
+  def record_usage
+    PlaidItemUsage.transaction(requires_new: true) { PlaidItemUsage.record!(self) }
+  rescue => error
+    DebugLogEntry.capture(
+      category: "provider_sync",
+      level: "warn",
+      message: "Plaid item usage could not be recorded",
+      source: self.class.name,
+      provider_key: "plaid",
+      family: family,
+      metadata: { plaid_item_id: id, error_class: error.class.name }
+    )
   end
 
   # Saves the raw data fetched from Plaid API for this item's institution
@@ -184,6 +203,13 @@ class PlaidItem < ApplicationRecord
 
       Rails.logger.warn("Plaid transaction refresh requires a shared Rails cache store") unless shared_cache
       shared_cache
+    end
+
+    # Plaid bills the month an item is removed in, and an item deleted before
+    # that month's first sync or usage job would otherwise have no row for it.
+    # Not when the family itself is being deleted: its usage rows go with it.
+    def record_usage_before_removal
+      record_usage unless destroyed_by_association&.active_record == Family
     end
 
     def remove_plaid_item
