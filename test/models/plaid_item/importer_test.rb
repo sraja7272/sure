@@ -193,6 +193,25 @@ class PlaidItem::ImporterTest < ActiveSupport::TestCase
     assert_equal "acc_mock_1_reissued", existing.reload.plaid_id
   end
 
+  test "keeps the item snapshot and usage when the institution request fails" do
+    item_data = OpenStruct.new(
+      item_id: "item_1",
+      available_products: [ "liabilities" ],
+      billed_products: [ "transactions" ],
+      institution_id: "ins_1"
+    )
+    @mock_provider.expects(:get_item).with(@plaid_item.access_token).returns(OpenStruct.new(item: item_data))
+    @mock_provider.expects(:get_institution).with("ins_1").raises(
+      Plaid::ApiError.new(code: 500, response_body: { "error_code" => "INTERNAL_SERVER_ERROR" }.to_json)
+    )
+
+    assert_raises(Plaid::ApiError) { @importer.import }
+
+    assert_equal [ "transactions" ], @plaid_item.reload.billed_products
+    usage = PlaidItemUsage.find_by!(plaid_item_id: @plaid_item.id, period: PlaidItemUsage.current_period)
+    assert_equal [ "transactions" ], usage.billed_products
+  end
+
   test "clears requires update status after a successful import" do
     @plaid_item.update!(status: :requires_update)
     @importer.stubs(:fetch_and_import_item_data)

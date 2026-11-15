@@ -41,9 +41,11 @@ creation. The full Minitest and system suites run in CI on the pull request, not
 locally.
 
 1. `bin/rails test <paths>` — the test files covering the code you changed.
-2. `DISABLE_PARALLELIZATION=true bin/rails test:system <paths>` — optional locally,
-   for system tests the change touches; keep system-test additions focused on
-   critical flows.
+2. `bin/rails test:prepare && DISABLE_PARALLELIZATION=true bin/rails test <paths>`
+   — optional locally, for system tests the change touches; keep system-test
+   additions focused on critical flows. `test:system` would run the whole
+   `test/system` directory even with paths, and running files directly skips the
+   Tailwind build in `test:prepare`, so CI runs both steps the same way.
 3. `bin/rubocop -f github -a` — Ruby lint with safe autocorrection.
 4. `bundle exec erb_lint ./app/**/*.erb -a` — ERB lint with autocorrection.
 5. `npm run lint` — keep Biome clean. Use `npm run format:check` for formatting

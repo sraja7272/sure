@@ -127,9 +127,9 @@ class UsageCostReport
       lines.each do |line|
         csv << [
           period,
-          line.family.name,
-          line.unassigned? ? "Unassigned" : line.user.display_name,
-          line.user&.email,
+          csv_text(line.family.name),
+          line.unassigned? ? "Unassigned" : csv_text(line.user.display_name),
+          csv_text(line.user&.email),
           decimal(line.ai_cost),
           line.ai_requests,
           line.ai_unpriced_requests,
@@ -214,5 +214,11 @@ class UsageCostReport
 
     def decimal(value)
       format("%.4f", value.round(4))
+    end
+
+    # Names are set by members, and a spreadsheet would evaluate one starting
+    # with a formula character (CWE-1236). A leading quote makes it plain text.
+    def csv_text(value)
+      value.to_s.match?(/\A[=+\-@\t\r]/) ? "'#{value}" : value
     end
 end

@@ -212,6 +212,43 @@ class PlaidItemTest < ActiveSupport::TestCase
     end
   end
 
+  test "destroy records the item's usage for the month before removing it" do
+    @plaid_provider.expects(:remove_item).once
+    period = PlaidItemUsage.current_period
+    assert_not PlaidItemUsage.exists?(plaid_item_id: @plaid_item.id, period: period)
+
+    @plaid_item.destroy!
+
+    usage = PlaidItemUsage.find_by!(plaid_item_id: @plaid_item.id, period: period)
+    assert_equal @plaid_item.family_id, usage.family_id
+    assert_equal %w[investments liabilities transactions], usage.billed_products.sort
+  end
+
+  # A database error aborts the surrounding Postgres transaction unless it is
+  # confined to a savepoint, so the DELETE after it would fail too.
+  test "destroy still removes the item when the usage row cannot be written" do
+    @plaid_provider.expects(:remove_item).once
+    @plaid_item.owner_id = SecureRandom.uuid
+
+    assert_difference -> { PlaidItem.count } => -1, -> { DebugLogEntry.count } => 1 do
+      @plaid_item.destroy!
+    end
+
+    assert_not PlaidItemUsage.exists?(plaid_item_id: @plaid_item.id)
+  end
+
+  test "destroying the family does not record usage for its items" do
+    @plaid_provider.expects(:remove_item).once
+    family = Family.create!(name: "Closing Family")
+    item = family.plaid_items.create!(name: "Closing Bank", plaid_id: "item_closing", access_token: "token_closing", billed_products: [ "transactions" ])
+    PlaidItemUsage.expects(:record!).never
+
+    family.destroy!
+
+    assert_not Family.exists?(family.id)
+    assert_not PlaidItem.exists?(item.id)
+  end
+
   test "user sync preserves follow-up sync while requesting provider refresh" do
     @plaid_item.expects(:request_transactions_refresh_later).once
     @plaid_item.expects(:sync_later_with_follow_up).once

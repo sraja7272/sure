@@ -222,6 +222,25 @@ class UsageCostReportTest < ActiveSupport::TestCase
     assert_equal 3, rows.size
   end
 
+  test "to_csv neutralises text cells a spreadsheet would read as a formula" do
+    @member.update!(first_name: "=1+1")
+    @dylan.update!(name: "@SUM(A1)")
+    ai_usage(@member, cost: "0.10")
+
+    row = CSV.parse(report.to_csv).second
+
+    assert_equal [ "2026-10", "'@SUM(A1)", "'=1+1 Dylan", "jakobdylan@yahoo.com", "0.1000" ], row.first(5)
+  end
+
+  test "to_csv leaves ordinary names unchanged" do
+    @member.update!(first_name: "Mary-Jane")
+    ai_usage(@member, cost: "0.10")
+
+    row = CSV.parse(report.to_csv).second
+
+    assert_equal [ "The Dylan Family", "Mary-Jane Dylan" ], row[1, 2]
+  end
+
   private
     def report(**scope)
       UsageCostReport.new(month: @month, **scope)
