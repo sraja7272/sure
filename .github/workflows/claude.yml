@@ -1,0 +1,80 @@
+# On-demand Claude reviews of pull requests.
+#
+# Mention @claude in a PR comment, an inline review comment, or a submitted
+# review and Claude answers on the PR. Add `model=<name>` to pick the model
+# (`opus`, `sonnet`, `haiku`, or a full model id); the default is `opus`.
+#
+# Runs bill Anthropic API credits through workload identity federation, set
+# up in Claude Console under Keys > Workload identity. The ANTHROPIC_* repo
+# variables (federation rule, organization, service account, workspace) point
+# at that federation rule.
+#
+# Reviews do not run the tests themselves (that would run PR code next to the
+# API credentials); they read the results of the CI workflow instead.
+name: Claude
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  claude:
+    # Three gates, all required:
+    # 1. Only people on the allow-list can spend the API credits. To add
+    #    someone, extend the list, e.g.
+    #      contains(fromJSON('["sraja7272", "another-user"]'), github.actor)
+    #    (they also need write access to the repo; the action checks that too).
+    # 2. issue_comment also fires on plain issues; only run for pull requests.
+    #    The two review events only ever come from pull requests.
+    # 3. The comment or review mentions @claude.
+    if: >-
+      contains(fromJSON('["sraja7272"]'), github.actor) &&
+      (github.event_name != 'issue_comment' || github.event.issue.pull_request) &&
+      contains(github.event.comment.body || github.event.review.body, '@claude')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write # OIDC token for the Claude API login and the GitHub App token
+      actions: read # with additional_permissions below, lets Claude read CI results
+    steps:
+      # The action fetches the PR branch itself (depth = PR commit count, min 20),
+      # so a shallow checkout is enough.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
+      # The comment text arrives through an env var, never interpolated into the
+      # script. Only [a-z0-9.-] survives, and the name must start with a letter
+      # or digit so it can't be read as another CLI flag.
+      - name: Pick model
+        id: model
+        env:
+          BODY: ${{ github.event.comment.body || github.event.review.body }}
+        run: |
+          MODEL=$(printf '%s' "$BODY" | grep -oiP 'model=\K[a-z0-9][a-z0-9.-]*' | head -n1 | tr '[:upper:]' '[:lower:]' || true)
+          echo "name=${MODEL:-opus}" >> "$GITHUB_OUTPUT"
+
+      - uses: anthropics/claude-code-action@58985842b834ed26087302ba27d07bc24ca8697a # v1.0.240 (v1)
+        with:
+          # Workload identity federation: the action trades this job's GitHub
+          # OIDC token (hence `id-token: write`) for a short-lived Claude API
+          # token, so no API key is stored in the repo.
+          anthropic_federation_rule_id: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID }}
+          anthropic_organization_id: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
+          anthropic_service_account_id: ${{ vars.ANTHROPIC_SERVICE_ACCOUNT_ID }}
+          anthropic_workspace_id: ${{ vars.ANTHROPIC_WORKSPACE_ID }}
+          # The job's `actions: read` grant alone is not enough: the action adds
+          # its CI tools (get_ci_status, get_workflow_run_details,
+          # download_job_log) only when this input asks for it.
+          additional_permissions: |
+            actions: read
+          claude_args: >-
+            --model ${{ steps.model.outputs.name }}
+            --append-system-prompt "Before reviewing a pull request, check the CI results for its head commit with the github_ci tools. Start the review with one line giving the CI gate result and any failing job. Quote failing test names from the job log; do not guess."
