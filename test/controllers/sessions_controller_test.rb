@@ -42,6 +42,12 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  def stub_sso_auto_redirect
+    AuthConfig.stubs(:auto_redirect_provider).returns(
+      { id: "oidc", strategy: "openid_connect", name: "openid_connect", label: "Sign in with Keycloak" }
+    )
+  end
+
   def setup_omniauth_mock(provider:, uid:, email:, name:, first_name: nil, last_name: nil)
     OmniAuth.config.mock_auth[:openid_connect] = OmniAuth::AuthHash.new({
       provider: provider,
@@ -335,6 +341,52 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_match %r{/auth/google_oauth2}, @response.body
     assert_match /#4285F4/i, @response.body
     assert_match /Sign in with Google/, @response.body
+  end
+
+  test "sign-in page hands off to the provider when SSO auto-redirect is on" do
+    stub_sso_auto_redirect
+
+    get new_session_path
+
+    assert_response :success
+    assert_select "form#sso_form[action=?][method=post]", "/auth/openid_connect" do
+      assert_select "input[name=authenticity_token]"
+    end
+    assert_select "input[type=password]", count: 0
+  end
+
+  test "sign-in page renders normally when SSO auto-redirect has no single provider" do
+    AuthConfig.stubs(:auto_redirect_provider).returns(nil)
+
+    get new_session_path
+
+    assert_response :success
+    assert_select "form#sso_form", count: 0
+    assert_select "a[href=?]", new_registration_path
+  end
+
+  test "sign-in page is shown instead of auto-redirecting after a failed SSO attempt" do
+    stub_sso_auto_redirect
+
+    get "/auth/failure", params: { message: "sso_failed", strategy: "openid_connect" }
+    assert_redirected_to new_session_path
+    follow_redirect!
+
+    assert_response :success
+    assert_select "form#sso_form", count: 0
+    assert_select "form[action=?]", "/auth/openid_connect"
+    assert_select "a[href=?]", new_registration_path, count: 0
+  end
+
+  test "sign-out goes back to the provider when SSO auto-redirect is on" do
+    stub_sso_auto_redirect
+    sign_in @user
+
+    delete session_url(@user.sessions.last)
+    assert_redirected_to new_session_path
+    follow_redirect!
+
+    assert_select "form#sso_form[action=?]", "/auth/openid_connect"
   end
 
   test "can sign out" do

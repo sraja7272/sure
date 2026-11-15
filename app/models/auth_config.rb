@@ -55,6 +55,23 @@ class AuthConfig
       false
     end
 
+    def sso_auto_redirect?
+      !!Rails.configuration.x.auth.sso_auto_redirect
+    end
+
+    # The provider that the sign-in and create-account pages hand off to
+    # without showing a form, or nil when they should render normally.
+    #
+    # Reads the list OmniAuth registered at boot rather than sso_providers,
+    # which can include providers that have no request route yet. With several
+    # providers there is no way to pick one, so nothing is redirected.
+    def auto_redirect_provider
+      return nil unless sso_auto_redirect?
+
+      registered = Rails.configuration.x.auth.sso_providers || []
+      registered.one? ? registered.first : nil
+    end
+
     def jit_link_only?
       Rails.configuration.x.auth.jit_mode.to_s == "link_only"
     end

@@ -36,6 +36,8 @@ class SessionsController < ApplicationController
       @email = params[:email]
       @password = params[:password]
     end
+
+    start_sso_auto_redirect
   end
 
   def create
@@ -541,6 +543,20 @@ class SessionsController < ApplicationController
       return unless user&.super_admin?
 
       Rails.logger.info("[AUTH] Super admin override login: user_id=#{user.id} email=#{user.email}")
+    end
+
+    # Hands the visitor to the single SSO provider instead of rendering the
+    # sign-in page. Every failed SSO attempt comes back here with an alert, so
+    # showing the page in that case is what keeps a broken provider from
+    # looping. OmniAuth only accepts a CSRF-protected POST, hence the
+    # auto-submitting form rather than a redirect.
+    def start_sso_auto_redirect
+      provider = AuthConfig.auto_redirect_provider
+      return if provider.nil? || flash[:alert].present? || @prefill_demo_credentials
+
+      flash.keep
+      @provider = provider[:name].to_s
+      render :mobile_sso_start, layout: false
     end
 
     def demo_host_match?(demo)
