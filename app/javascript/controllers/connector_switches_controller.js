@@ -76,7 +76,9 @@ export default class extends Controller {
 
   #switches() {
     return Array.from(
-      this.element.querySelectorAll('input[type="checkbox"][name^="connectors["]'),
+      this.element.querySelectorAll(
+        'input[type="checkbox"][name^="connectors["]',
+      ),
     );
   }
 
