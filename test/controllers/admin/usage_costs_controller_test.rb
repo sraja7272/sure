@@ -1,6 +1,8 @@
 require "test_helper"
 
 class Admin::UsageCostsControllerTest < ActionDispatch::IntegrationTest
+  include TableTestHelper
+
   RATE_SETTINGS = PlaidItemUsage::RATE_SETTINGS.values.map(&:to_s).freeze
 
   setup do
@@ -140,7 +142,7 @@ class Admin::UsageCostsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-action*='money-field#insertOperator']", count: 0
   end
 
-  test "a saved rate shows at least two decimals and a blur keeps them" do
+  test "a saved rate renders at least two decimals and the fields ask for two on blur" do
     Setting.plaid_rate_transactions = BigDecimal("0.2")
     Setting.plaid_rate_liabilities = BigDecimal("3")
     sign_in @super_admin
@@ -228,15 +230,5 @@ class Admin::UsageCostsControllerTest < ActionDispatch::IntegrationTest
     def last_cell_of_row(header_text)
       row = css_select("tbody tr").find { |tr| tr.at_css("th")&.text&.include?(header_text) }
       row.css("td").last.text.strip
-    end
-
-    # The body cells under a column heading, across every table on the page.
-    def column_cells(header)
-      css_select("table").flat_map do |table|
-        index = table.css("thead th").map { |th| th.text.strip }.index(header)
-        next [] unless index
-
-        table.css("tbody tr").map { |tr| tr.element_children[index] }
-      end
     end
 end

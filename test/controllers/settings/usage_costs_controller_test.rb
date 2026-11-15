@@ -1,6 +1,8 @@
 require "test_helper"
 
 class Settings::UsageCostsControllerTest < ActionDispatch::IntegrationTest
+  include TableTestHelper
+
   setup do
     @member = users(:family_member)
     @admin = users(:family_admin)
@@ -132,16 +134,6 @@ class Settings::UsageCostsControllerTest < ActionDispatch::IntegrationTest
   end
 
   private
-    # The body cells under a column heading, across every table on the page.
-    def column_cells(header)
-      css_select("table").flat_map do |table|
-        index = table.css("thead th").map { |th| th.text.strip }.index(header)
-        next [] unless index
-
-        table.css("tbody tr").map { |tr| tr.element_children[index] }
-      end
-    end
-
     def assert_no_other_users_figures
       %w[7.7777 7.78 8.8888 8.89 9.9999 10.00 Admin\ Savings\ Bank Outsider\ Trust].each do |text|
         assert_not_includes response.body, text
