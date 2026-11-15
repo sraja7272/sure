@@ -33,6 +33,7 @@ jobs:
           SERVICE_ACCOUNT_ID: ${{ vars.ANTHROPIC_SERVICE_ACCOUNT_ID }}
           WORKSPACE_ID: ${{ vars.ANTHROPIC_WORKSPACE_ID }}
         run: |
+          set -o pipefail
           jq -n \
             --arg assertion "$JWT" \
             --arg rule "$FEDERATION_RULE_ID" \
