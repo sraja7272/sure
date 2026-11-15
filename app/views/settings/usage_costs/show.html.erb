@@ -10,22 +10,22 @@
   <% else %>
     <% ai_lines = @report.ai_cost_by_operation %>
     <% if ai_lines.any? %>
-      <%= render layout: "shared/usage_cost_section", locals: { title: t(".ai_title") } do %>
+      <%= usage_cost_section title: t(".ai_title") do %>
         <%= render DS::Table.new(rows: ai_lines, label: t(".ai_title")) do |table| %>
           <% table.with_column(t(".feature"), row_header: true) { |line| usage_cost_operation_label(line.operation) } %>
           <% table.with_column(t(".requests"), numeric: true) { |line| render "shared/usage_cost_requests", requests: line.ai_requests, unpriced: line.ai_unpriced_requests } %>
-          <% table.with_column(t(".cost"), numeric: true) { |line| format_usage_cost(line.ai_cost, precision: 4) } %>
+          <% table.with_column(t(".cost"), numeric: true, class: "privacy-sensitive") { |line| format_usage_cost(line.ai_cost, precision: 4) } %>
         <% end %>
       <% end %>
     <% end %>
 
     <% if @report.plaid_rows.any? %>
-      <%= render layout: "shared/usage_cost_section", locals: { title: t(".plaid_title") } do %>
+      <%= usage_cost_section title: t(".plaid_title") do %>
         <%= render DS::Table.new(rows: @report.plaid_rows, label: t(".plaid_title")) do |table| %>
           <% table.with_column(t(".institution"), row_header: true) { |row| row.institution_name.presence || t(".unnamed_institution") } %>
           <% table.with_column(t(".products")) { |row| usage_cost_products_label(row.billed_products) } %>
           <% table.with_column(t(".refreshes"), numeric: true) { |row| number_with_delimiter(row.transactions_refresh_count).to_s } %>
-          <% table.with_column(t(".cost"), numeric: true) { |row| format_usage_cost(row.cost) } %>
+          <% table.with_column(t(".cost"), numeric: true, class: "privacy-sensitive") { |row| format_usage_cost(row.cost) } %>
         <% end %>
       <% end %>
     <% end %>

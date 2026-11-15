@@ -1,6 +1,8 @@
 require "test_helper"
 
 class Settings::UsageCostsControllerTest < ActionDispatch::IntegrationTest
+  include TableTestHelper
+
   setup do
     @member = users(:family_member)
     @admin = users(:family_admin)
@@ -28,6 +30,8 @@ class Settings::UsageCostsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Member Credit Union"
     assert_select "section h3", text: I18n.t("settings.usage_costs.show.ai_title")
     assert_select "section h3", text: I18n.t("settings.usage_costs.show.plaid_title")
+    assert_select "table th", text: I18n.t("settings.usage_costs.show.institution")
+    assert_select ".translation_missing", count: 0
   end
 
   test "a sub-cent total is not rounded to zero" do
@@ -42,6 +46,29 @@ class Settings::UsageCostsControllerTest < ActionDispatch::IntegrationTest
 
     total = css_select("h4").find { |heading| heading.text.strip == I18n.t("usage_costs.summary.total") }
     assert_equal "$0.0040", total.next_element.text.strip
+  end
+
+  test "privacy mode blurs every cost but not the counts" do
+    sign_in @member
+
+    get settings_usage_costs_path(month: "2026-10")
+
+    summary_titles = %w[total ai_cost plaid_cost].map { |key| I18n.t("usage_costs.summary.#{key}") }
+    summary_titles.each do |title|
+      value = css_select("h4").find { |heading| heading.text.strip == title }.next_element
+      assert_includes value.classes, "privacy-sensitive"
+    end
+
+    cost_cells = column_cells(I18n.t("settings.usage_costs.show.cost"))
+    # One AI feature row and one Plaid connection row.
+    assert_equal 2, cost_cells.size
+    assert cost_cells.all? { |cell| cell.classes.include?("privacy-sensitive") }, "cost cells are not privacy-sensitive"
+
+    %w[requests refreshes].each do |key|
+      cells = column_cells(I18n.t("settings.usage_costs.show.#{key}"))
+      assert cells.any?
+      assert cells.none? { |cell| cell.classes.include?("privacy-sensitive") }, "#{key} cells are privacy-sensitive"
+    end
   end
 
   test "choosing a month loads it without a submit button" do

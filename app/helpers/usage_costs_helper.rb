@@ -31,6 +31,12 @@ module UsageCostsHelper
     [ rate.to_d.to_s("F").split(".").last.sub(/0+\z/, "").length, 2 ].max
   end
 
+  # The block is captured before the partial renders, so lazy `t(".key")`
+  # lookups in it resolve against the calling view, not the partial.
+  def usage_cost_section(title:, &block)
+    render "shared/usage_cost_section", title: title, content: capture(&block)
+  end
+
   def usage_cost_operation_label(operation)
     t("usage_costs.operations.#{operation}", default: operation.to_s.humanize)
   end
