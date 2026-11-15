@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class RedbarkItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "redbark"
   ALLOWED_ACCOUNTABLE_TYPES = %w[Depository CreditCard Investment Loan OtherAsset OtherLiability Crypto Property Vehicle].freeze
 
   before_action :set_redbark_item, only: [ :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]

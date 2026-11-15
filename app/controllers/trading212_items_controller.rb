@@ -1,4 +1,6 @@
 class Trading212ItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "trading212"
   before_action :set_trading212_item, only: [ :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]
   before_action :require_admin!, only: [ :create, :select_accounts, :select_existing_account, :link_existing_account, :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]
 

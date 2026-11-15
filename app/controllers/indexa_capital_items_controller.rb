@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class IndexaCapitalItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "indexa_capital"
   ALLOWED_ACCOUNTABLE_TYPES = %w[Depository CreditCard Investment Loan OtherAsset OtherLiability Crypto Property Vehicle].freeze
 
   before_action :set_indexa_capital_item, only: [ :show, :edit, :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]

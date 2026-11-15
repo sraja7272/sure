@@ -1,4 +1,6 @@
 class IbkrItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "ibkr"
   before_action :set_ibkr_item, only: [ :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]
   before_action :require_admin!, only: [ :create, :select_accounts, :select_existing_account, :link_existing_account, :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]
 

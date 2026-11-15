@@ -1099,6 +1099,7 @@ Rails.application.routes.draw do
       get :deletion, on: :member
     end
     resources :sso_identity_blocks, only: [ :destroy ]
+    resource :connectors, only: %i[show update], controller: "connectors"
     resources :invitations, only: [ :destroy ]
     resource :usage_costs, only: %i[show update]
     resources :families, only: [ :destroy ] do

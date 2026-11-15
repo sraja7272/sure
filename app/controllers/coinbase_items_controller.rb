@@ -1,4 +1,6 @@
 class CoinbaseItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "coinbase"
   before_action :set_coinbase_item, only: [ :show, :edit, :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]
   before_action :require_admin!, only: [ :new, :create, :preload_accounts, :select_accounts, :link_accounts, :select_existing_account, :link_existing_account, :edit, :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]
 

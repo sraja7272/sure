@@ -104,6 +104,10 @@ class Setting < RailsSettings::Base
   # Multi-provider: comma-separated list of enabled securities providers
   field :securities_providers, type: :string, default: ENV.fetch("SECURITIES_PROVIDERS", "")
 
+  # Account connectors a super admin has switched off (Provider::ConnectorAvailability).
+  # Empty means every connector is offered.
+  field :disabled_connectors, type: :array, default: []
+
   # New provider API keys (encrypted at rest — see EncryptedSettingFields below)
   field :tiingo_api_key, type: :string, default: ENV["TIINGO_API_KEY"]
   field :eodhd_api_key, type: :string, default: ENV["EODHD_API_KEY"]

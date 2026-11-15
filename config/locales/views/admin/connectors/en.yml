@@ -1,0 +1,21 @@
+---
+en:
+  admin:
+    connectors:
+      show:
+        at_least_one: At least one connector must stay on.
+        description: Choose which account connectors your users can connect with.
+          Connectors you turn off are hidden from the connect screens. Connections
+          that already exist keep syncing and stay manageable.
+        kinds:
+          bank: Banks
+          crypto: Crypto
+          investment: Brokerages
+        page_title: Connectors
+        save: Save
+      update:
+        none_enabled: Turn on at least one connector.
+        success: Connector settings saved.
+        unknown_connector: That connector doesn't exist.
+  connectors:
+    disabled: This connection option has been turned off by your administrator.

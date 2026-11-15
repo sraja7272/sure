@@ -1,4 +1,6 @@
 class EnableBankingItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "enable_banking", also: %i[select_bank new_connection]
   include EnableBankingItems::MapsHelper
   include SafeProviderRedirect
   before_action :set_enable_banking_item, only: [ :update, :destroy, :sync, :select_bank, :authorize, :reauthorize, :setup_accounts, :complete_account_setup, :new_connection ]

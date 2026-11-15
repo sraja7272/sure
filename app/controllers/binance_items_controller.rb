@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class BinanceItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "binance"
   before_action :set_binance_item, only: [ :show, :edit, :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]
   before_action :require_admin!, only: [ :new, :create, :select_accounts, :link_accounts, :select_existing_account, :link_existing_account, :edit, :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]
 

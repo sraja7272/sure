@@ -488,6 +488,15 @@ class Settings::ProvidersController < ApplicationController
         summary: view_context.financekit_provider_summary(@financekit_connections)
       }
 
-      (configuration_entries + family_entries + [ wallet_entry ]).sort_by { |entry| entry[:title].downcase }
+      (configuration_entries + family_entries + [ wallet_entry ])
+        .reject { |entry| hidden_connector_entry?(entry) }
+        .sort_by { |entry| entry[:title].downcase }
+    end
+
+    # A connector a super admin switched off is no longer offered, but a family
+    # that already has a connection through it keeps seeing it to manage it.
+    def hidden_connector_entry?(entry)
+      entry[:summary][:status] == :off &&
+        !Provider::ConnectorAvailability.enabled?(entry[:provider_key])
     end
 end

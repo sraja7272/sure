@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class KrakenItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "kraken"
   before_action :set_kraken_item, only: %i[update destroy sync setup_accounts complete_account_setup]
   before_action :require_admin!, only: %i[create select_accounts link_accounts select_existing_account link_existing_account update destroy sync setup_accounts complete_account_setup]
 

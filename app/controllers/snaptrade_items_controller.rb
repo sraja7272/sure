@@ -1,4 +1,6 @@
 class SnaptradeItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "snaptrade", also: %i[connect]
   PERMITTED_OAUTH_SCOPES = %w[read].freeze
   # RFC 8628 §3.5: the authorization server is telling us to keep waiting, not
   # that anything went wrong.

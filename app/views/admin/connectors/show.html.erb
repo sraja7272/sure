@@ -1,0 +1,35 @@
+<%= content_for :page_title, t(".page_title") %>
+
+<div class="space-y-4">
+  <p class="text-secondary"><%= t(".description") %></p>
+
+  <%= styled_form_with url: admin_connectors_path, method: :patch, data: { turbo: false } do |form| %>
+    <div class="space-y-4">
+      <% { "Bank" => t(".kinds.bank"), "Investment" => t(".kinds.investment"), "Crypto" => t(".kinds.crypto") }.each do |kind, title| %>
+        <% connectors = @connectors_by_kind[kind] %>
+        <% next if connectors.blank? %>
+
+        <%= settings_section title: title do %>
+          <div class="divide-y divide-alpha-black-200 theme-dark:divide-alpha-white-200">
+            <% connectors.each do |connector| %>
+              <div class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+                <label for="connector_<%= connector.key %>" class="font-medium text-primary"><%= connector.name %></label>
+                <%= render DS::Toggle.new(
+                  id: "connector_#{connector.key}",
+                  name: "connectors[#{connector.key}]",
+                  checked: @enabled_keys.include?(connector.key)
+                ) %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
+
+      <p class="text-sm text-secondary"><%= t(".at_least_one") %></p>
+
+      <div class="flex justify-end">
+        <%= render DS::Button.new(text: t(".save"), type: "submit") %>
+      </div>
+    </div>
+  <% end %>
+</div>
