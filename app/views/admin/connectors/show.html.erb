@@ -3,7 +3,7 @@
 <div class="space-y-4">
   <p class="text-secondary"><%= t(".description") %></p>
 
-  <%= styled_form_with url: admin_connectors_path, method: :patch, data: { turbo: false } do |form| %>
+  <%= styled_form_with url: admin_connectors_path, method: :patch, data: { controller: "auto-submit-form" } do |form| %>
     <div class="space-y-4">
       <% { "Bank" => t(".kinds.bank"), "Investment" => t(".kinds.investment"), "Crypto" => t(".kinds.crypto") }.each do |kind, title| %>
         <% connectors = @connectors_by_kind[kind] %>
@@ -17,7 +17,8 @@
                 <%= render DS::Toggle.new(
                   id: "connector_#{connector.key}",
                   name: "connectors[#{connector.key}]",
-                  checked: @enabled_keys.include?(connector.key)
+                  checked: @enabled_keys.include?(connector.key),
+                  data: { "auto-submit-form-target": "auto" }
                 ) %>
               </div>
             <% end %>
@@ -26,10 +27,6 @@
       <% end %>
 
       <p class="text-sm text-secondary"><%= t(".at_least_one") %></p>
-
-      <div class="flex justify-end">
-        <%= render DS::Button.new(text: t(".save"), type: "submit") %>
-      </div>
     </div>
   <% end %>
 </div>

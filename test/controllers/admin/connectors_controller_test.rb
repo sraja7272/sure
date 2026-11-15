@@ -16,8 +16,9 @@ class Admin::ConnectorsControllerTest < ActionDispatch::IntegrationTest
     get admin_connectors_path
 
     assert_response :success
+    assert_select "form[data-controller='auto-submit-form']"
     Provider::ConnectorAvailability.keys.each do |key|
-      assert_select "input[type=checkbox][name='connectors[#{key}]']"
+      assert_select "input[type=checkbox][name='connectors[#{key}]'][data-auto-submit-form-target='auto']"
     end
   end
 
