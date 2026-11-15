@@ -8,6 +8,7 @@ en:
       ai_prompts_label: AI Prompts
       auto_matches_label: Auto Matches
       classifier_label: Classifier
+      connectors_label: Connectors
       background_jobs_label: Background jobs
       api_key_label: API Keys
       payment_label: Payment
@@ -29,7 +30,6 @@ en:
       mcp_label: MCP
       security_label: Security
       self_hosting_label: Self-Hosting
-      connectors_label: Connectors
       sso_providers_label: SSO Providers
       statement_vault_label: Statement Vault
       system_health_label: System health

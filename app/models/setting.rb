@@ -104,12 +104,12 @@ class Setting < RailsSettings::Base
   # Multi-provider: comma-separated list of enabled securities providers
   field :securities_providers, type: :string, default: ENV.fetch("SECURITIES_PROVIDERS", "")
 
-  # Account connectors a super admin has switched off (Provider::ConnectorAvailability).
-  # Empty means every connector is offered.
-  field :disabled_connectors, type: :array, default: []
-  # "<page id>:<sequence>" of the last save from the Connectors page, so a save
-  # that arrives after a newer one from the same page is ignored.
-  field :connectors_last_save, type: :string
+  # Account connectors a super admin has switched on (Provider::ConnectorAvailability).
+  # Unset means none has been chosen yet, so every connector is offered.
+  field :enabled_connectors, type: :array, default: nil
+  # Highest save counter applied per Connectors page ({ page id => sequence }),
+  # so a save that arrives after a newer one from the same page is ignored.
+  field :connectors_save_sequences, type: :hash, default: {}
 
   # New provider API keys (encrypted at rest — see EncryptedSettingFields below)
   field :tiingo_api_key, type: :string, default: ENV["TIINGO_API_KEY"]

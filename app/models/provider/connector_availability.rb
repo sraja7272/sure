@@ -6,8 +6,10 @@
 # new-connection endpoints refuse requests (see ConnectorGated). Connections
 # that already exist keep syncing and stay manageable.
 #
-# Stored as the list of *disabled* keys in Setting.disabled_connectors, so an
-# empty setting -- the default -- means every connector is on.
+# Stored as the list of *enabled* keys in Setting.enabled_connectors. Until a
+# super admin first saves a choice the setting is unset and every connector is
+# on; after that, only the listed connectors are on, so a connector added by a
+# later release stays off until someone switches it on.
 class Provider::ConnectorAvailability
   class Error < StandardError; end
   class NoneEnabledError < Error; end
@@ -19,20 +21,12 @@ class Provider::ConnectorAvailability
   # Plaid EU only holds EU credentials; its items are PlaidItems.
   KEY_ALIASES = { "plaid_eu" => "plaid" }.freeze
 
-  # Display names for connectors whose Provider::Metadata entry has no :name.
-  NAMES = {
-    "akahu" => "Akahu", "binance" => "Binance", "brex" => "Brex", "coinbase" => "Coinbase",
-    "coinstats" => "CoinStats", "enable_banking" => "Enable Banking", "ibkr" => "Interactive Brokers",
-    "indexa_capital" => "Indexa Capital", "kraken" => "Kraken", "lunchflow" => "Lunch Flow",
-    "mercury" => "Mercury", "monobank" => "Monobank", "plaid" => "Plaid", "questrade" => "Questrade",
-    "redbark" => "Redbark", "sharesight" => "Sharesight", "simplefin" => "SimpleFIN",
-    "snaptrade" => "SnapTrade", "sophtron" => "Sophtron", "trade_republic" => "Trade Republic",
-    "trading212" => "Trading 212", "up" => "Up", "wise" => "Wise"
-  }.freeze
-
   KINDS = %w[Bank Investment Crypto].freeze
 
   LOCK_KEY = Zlib.crc32("provider_connector_availability")
+
+  # Pages tracked for save ordering; the oldest are dropped beyond this.
+  MAX_TRACKED_PAGES = 50
 
   class << self
     # Every connector, sorted by name.
@@ -44,7 +38,7 @@ class Provider::ConnectorAvailability
 
         meta = Provider::Metadata.for(key)
         kind = Array(meta[:kinds]).first.presence_in(KINDS) || "Bank"
-        Connector.new(key: key, name: meta[:name] || NAMES[key] || key.titleize, kind: kind)
+        Connector.new(key: key, name: meta[:name] || key.titleize, kind: kind)
       end.uniq(&:key).sort_by { |c| c.name.downcase }
     end
 
@@ -63,23 +57,27 @@ class Provider::ConnectorAvailability
       KEY_ALIASES.fetch(key, key)
     end
 
+    # Keys that aren't connectors (nothing to switch) are always on.
     def enabled?(key)
-      !disabled_keys.include?(normalize_key(key))
-    end
+      saved = saved_enabled_keys
+      return true if saved.nil?
 
-    def disabled_keys
-      Array(Setting.disabled_connectors).map(&:to_s)
+      key = normalize_key(key)
+      saved.include?(key) || !keys.include?(key)
     end
 
     def enabled_keys
-      keys - disabled_keys
+      saved = saved_enabled_keys
+      saved.nil? ? keys : keys & saved
     end
 
     # Replaces the set of enabled connectors. At least one must stay on.
     #
-    # The Connectors page saves on every change, so saves can overlap. Each one
-    # names its page (client_id) and a counter (sequence); a save older than the
-    # last one applied from the same page is ignored.
+    # The Connectors page saves batched changes in the background, so saves can
+    # overlap. Each one names its page (client_id) and a counter (sequence); a
+    # save older than the newest one applied from the same page is ignored.
+    # Each save carries the page's full state, so with two pages open the last
+    # save wins, which is acceptable for a super-admin setting.
     #
     # @param enabled [Array<String>] connector keys to leave on
     # @return [Boolean] false when the save was ignored as out of date
@@ -93,22 +91,26 @@ class Provider::ConnectorAvailability
         Setting.connection.execute("SELECT pg_advisory_xact_lock(#{LOCK_KEY})")
         Setting.clear_cache
 
-        if stale_save?(client_id, sequence)
+        sequences = Setting.connectors_save_sequences.to_h.transform_keys(&:to_s)
+
+        if client_id.present? && sequence.to_i <= sequences[client_id.to_s].to_i
           false
         else
-          Setting.connectors_last_save = "#{client_id}:#{sequence.to_i}" if client_id.present?
-          Setting.disabled_connectors = keys - enabled
+          if client_id.present?
+            sequences.delete(client_id.to_s)
+            sequences[client_id.to_s] = sequence.to_i
+            Setting.connectors_save_sequences = sequences.to_a.last(MAX_TRACKED_PAGES).to_h
+          end
+          Setting.enabled_connectors = enabled
           true
         end
       end
     end
 
     private
-      def stale_save?(client_id, sequence)
-        return false if client_id.blank?
-
-        last_client_id, _, last_sequence = Setting.connectors_last_save.to_s.rpartition(":")
-        last_client_id == client_id.to_s && sequence.to_i <= last_sequence.to_i
+      def saved_enabled_keys
+        saved = Setting.enabled_connectors
+        saved&.map(&:to_s)
       end
   end
 end

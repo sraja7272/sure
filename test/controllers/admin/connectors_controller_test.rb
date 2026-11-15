@@ -3,12 +3,13 @@ require "test_helper"
 class Admin::ConnectorsControllerTest < ActionDispatch::IntegrationTest
   setup do
     ensure_tailwind_build
-    Setting.disabled_connectors = []
+    Setting.enabled_connectors = nil
+    Setting.connectors_save_sequences = {}
   end
 
   teardown do
-    Setting.disabled_connectors = []
-    Setting.connectors_last_save = nil
+    Setting.enabled_connectors = nil
+    Setting.connectors_save_sequences = {}
   end
 
   test "super admin sees a switch for every connector" do
@@ -18,7 +19,9 @@ class Admin::ConnectorsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "form[data-controller='connector-switches']"
-    assert_select "template[data-connector-switches-target='notice']"
+    assert_select "template[data-connector-switches-target='savedNotice']"
+    assert_select "template[data-connector-switches-target='noneEnabledAlert']"
+    assert_select "template[data-connector-switches-target='failedAlert']"
     Provider::ConnectorAvailability.keys.each do |key|
       assert_select "input[type=checkbox][name='connectors[#{key}]'][data-action='change->connector-switches#save']"
     end
@@ -32,7 +35,7 @@ class Admin::ConnectorsControllerTest < ActionDispatch::IntegrationTest
 
     patch admin_connectors_path, params: { connectors: { plaid: "1" } }
     assert_redirected_to root_path
-    assert_empty Setting.disabled_connectors
+    assert_nil Setting.enabled_connectors
   end
 
   test "saving turns off unchecked connectors" do
@@ -77,7 +80,7 @@ class Admin::ConnectorsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert_includes response.body, %(target="connector_switches")
     assert_includes response.body, I18n.t("admin.connectors.update.none_enabled")
-    assert_empty Setting.disabled_connectors
+    assert_nil Setting.enabled_connectors
   end
 
   test "saving with every connector off is refused" do
@@ -87,6 +90,6 @@ class Admin::ConnectorsControllerTest < ActionDispatch::IntegrationTest
     patch admin_connectors_path, params: { connectors: params }
 
     assert_response :unprocessable_entity
-    assert_empty Setting.disabled_connectors
+    assert_nil Setting.enabled_connectors
   end
 end

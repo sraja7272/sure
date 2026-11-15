@@ -102,6 +102,13 @@ class EnableBankingItemsController < ApplicationController
       return
     end
 
+    # Re-authorizing an existing connection stays allowed when the connector
+    # is switched off; starting another connection does not.
+    if params[:new_connection] == "true"
+      require_connector_enabled!("enable_banking")
+      return if performed?
+    end
+
     begin
       target_item = if params[:new_connection] == "true"
         Current.family.enable_banking_items.create!(

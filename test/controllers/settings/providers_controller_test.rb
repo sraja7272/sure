@@ -255,6 +255,32 @@ class Settings::ProvidersControllerTest < ActionDispatch::IntegrationTest
     refute_includes response.body, "Test Brex Connection"
   end
 
+  test "a switched-off connector is not offered to a family without a connection through it" do
+    sign_in users(:empty)
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[brex])
+
+    get settings_providers_url
+    assert_response :success
+    assert_not_includes response.body, connect_form_settings_providers_path(provider_key: "brex")
+
+    get connect_form_settings_providers_url(provider_key: "brex")
+    assert_redirected_to settings_providers_path
+    assert_equal I18n.t("connectors.disabled"), flash[:alert]
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
+  test "a switched-off connector stays listed for a family that has a connection through it" do
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[wise])
+
+    get settings_providers_url
+
+    assert_response :success
+    assert_select "details#wise-connection"
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
   test "lists active Wise and CoinSpot connections under your connections" do
     get settings_providers_url
 

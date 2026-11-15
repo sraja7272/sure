@@ -36,6 +36,10 @@ class Financekit::Enrollment
       replacement = if input["replaces_connection_id"]
         user.family.financekit_items.where(user: user).find(input["replaces_connection_id"])
       end
+      # Replacing an existing connection is repair, so it stays allowed when
+      # a super admin has switched FinanceKit off.
+      Financekit.require!(replacement || Provider::ConnectorAvailability.enabled?("financekit"),
+        "connector_disabled", 403)
       generation = replacement ? replacement.generation + 1 : 1
       item = user.family.financekit_items.create!(user: user, enrollment_id: input["enrollment_id"],
         publisher_id: SecureRandom.uuid, generation: generation, enrollment_digest: digest,

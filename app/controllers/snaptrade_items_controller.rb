@@ -208,6 +208,8 @@ class SnaptradeItemsController < ApplicationController
       return
     end
 
+    return unless snaptrade_connection_allowed?
+
     snaptrade_item = if params[:item_id].present?
       Current.family.snaptrade_items.find(params[:item_id])
     else
@@ -299,6 +301,8 @@ class SnaptradeItemsController < ApplicationController
   def start_oauth_device_flow
     assign_device_flow_context
     return render_device_flow_unconfigured unless Provider::Snaptrade.oauth_configured?
+
+    return unless snaptrade_connection_allowed?
 
     @snaptrade_item = if params[:item_id].present?
       Current.family.snaptrade_items.find(params[:item_id])
@@ -502,6 +506,15 @@ class SnaptradeItemsController < ApplicationController
   end
 
   private
+    # Authorizing an existing connection stays allowed when SnapTrade is
+    # switched off; starting the family's first connection does not.
+    def snaptrade_connection_allowed?
+      return true if params[:item_id].present? || current_snaptrade_item
+
+      require_connector_enabled!("snaptrade")
+      !performed?
+    end
+
 
     def set_snaptrade_item
       @snaptrade_item = Current.family.snaptrade_items.find(params[:id])

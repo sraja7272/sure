@@ -2,12 +2,13 @@ require "test_helper"
 
 class Provider::ConnectorAvailabilityTest < ActiveSupport::TestCase
   setup do
-    Setting.disabled_connectors = []
+    Setting.enabled_connectors = nil
+    Setting.connectors_save_sequences = {}
   end
 
   teardown do
-    Setting.disabled_connectors = []
-    Setting.connectors_last_save = nil
+    Setting.enabled_connectors = nil
+    Setting.connectors_save_sequences = {}
   end
 
   test "lists every registered connector once, keyed by provider" do
@@ -46,6 +47,31 @@ class Provider::ConnectorAvailabilityTest < ActiveSupport::TestCase
       Provider::ConnectorAvailability.update!([])
     end
     assert Provider::ConnectorAvailability.enabled?("plaid")
+  end
+
+  test "once a choice is saved, a connector missing from it stays off" do
+    Provider::ConnectorAvailability.update!(%w[plaid simplefin])
+
+    # Simulates a connector a later release adds: it isn't in the saved list.
+    Setting.enabled_connectors = %w[plaid]
+
+    assert Provider::ConnectorAvailability.enabled?("plaid")
+    assert_not Provider::ConnectorAvailability.enabled?("simplefin")
+    assert_equal %w[plaid], Provider::ConnectorAvailability.enabled_keys
+  end
+
+  test "keys that are not connectors are never switched off" do
+    Provider::ConnectorAvailability.update!(%w[plaid])
+
+    assert Provider::ConnectorAvailability.enabled?("rentcast")
+  end
+
+  test "a delayed save from one page is ignored after another page saved in between" do
+    assert Provider::ConnectorAvailability.update!(%w[plaid simplefin], client_id: "page-a", sequence: 2)
+    assert Provider::ConnectorAvailability.update!(%w[plaid simplefin lunchflow], client_id: "page-b", sequence: 1)
+    assert_not Provider::ConnectorAvailability.update!(%w[plaid], client_id: "page-a", sequence: 1)
+
+    assert_equal %w[lunchflow plaid simplefin], Provider::ConnectorAvailability.enabled_keys.sort
   end
 
   test "update! ignores an older save from the same page but not from another page" do

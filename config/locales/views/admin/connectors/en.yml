@@ -15,7 +15,7 @@ en:
         page_title: Connectors
       update:
         none_enabled: Turn on at least one connector.
+        save_failed: Couldn't save connector settings. Your last saved choices are restored.
         success: Connector settings saved.
-        unknown_connector: That connector doesn't exist.
   connectors:
     disabled: This connection option has been turned off by your administrator.

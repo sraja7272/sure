@@ -1,10 +1,7 @@
 <div id="connector_switches" class="space-y-4">
-  <% { "Bank" => t("admin.connectors.show.kinds.bank"), "Investment" => t("admin.connectors.show.kinds.investment"), "Crypto" => t("admin.connectors.show.kinds.crypto") }.each do |kind, title| %>
-    <% connectors = @connectors_by_kind[kind] %>
-    <% next if connectors.blank? %>
-
+  <% @connector_groups.each do |title, connectors| %>
     <%= settings_section title: title do %>
-      <div class="divide-y divide-alpha-black-200 theme-dark:divide-alpha-white-200">
+      <div class="divide-y divide-subdued">
         <% connectors.each do |connector| %>
           <div class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
             <label for="connector_<%= connector.key %>" class="font-medium text-primary"><%= connector.name %></label>

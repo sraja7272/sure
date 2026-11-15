@@ -34,8 +34,6 @@ module Admin
           render :show, status: :unprocessable_entity
         end
       end
-    rescue Provider::ConnectorAvailability::UnknownConnectorError
-      redirect_to admin_connectors_path, alert: t(".unknown_connector")
     end
 
     private
@@ -53,7 +51,12 @@ module Admin
           [ t("breadcrumbs.home"), root_path ],
           [ t("admin.connectors.show.page_title"), nil ]
         ]
-        @connectors_by_kind = Provider::ConnectorAvailability.all.group_by(&:kind)
+        by_kind = Provider::ConnectorAvailability.all.group_by(&:kind)
+        @connector_groups = {
+          t("admin.connectors.show.kinds.bank") => by_kind["Bank"],
+          t("admin.connectors.show.kinds.investment") => by_kind["Investment"],
+          t("admin.connectors.show.kinds.crypto") => by_kind["Crypto"]
+        }.compact_blank
         @enabled_keys = Provider::ConnectorAvailability.enabled_keys.to_set
       end
   end
