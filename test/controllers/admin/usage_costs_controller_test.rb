@@ -37,6 +37,8 @@ class Admin::UsageCostsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href='#{admin_usage_costs_path(month: "2026-09")}']"
     assert_includes response.body, I18n.t("admin.usage_costs.show.estimates_body")
     assert_not_includes response.body, "Attribution to people"
+    assert_select "table th", text: I18n.t("admin.usage_costs.show.ai_requests")
+    assert_select ".translation_missing", count: 0
   end
 
   test "a sub-cent total is not rounded to zero" do
@@ -52,6 +54,27 @@ class Admin::UsageCostsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "$0.0040", summary_card_value(I18n.t("usage_costs.summary.total"))
     assert_equal "$0.0040", last_cell_of_row(@member.display_name)
     assert_equal "$0.0040", last_cell_of_row(I18n.t("admin.usage_costs.show.subtotal"))
+  end
+
+  test "privacy mode blurs every cost in the family tables but not the counts" do
+    sign_in @super_admin
+
+    get admin_usage_costs_path(month: "2026-10")
+
+    cost_headers = %w[ai_cost plaid_cost total].map { |key| I18n.t("admin.usage_costs.show.#{key}") }
+    count_headers = %w[ai_requests plaid_items].map { |key| I18n.t("admin.usage_costs.show.#{key}") }
+    # Person rows, the Unassigned row and the Subtotal row alike.
+    row_headers = css_select("tbody tr th").map { |th| th.text.strip }
+    assert row_headers.any? { |text| text.include?(@member.display_name) }
+    assert_includes row_headers, I18n.t("admin.usage_costs.show.unassigned")
+    assert_includes row_headers, I18n.t("admin.usage_costs.show.subtotal")
+    cost_headers.each do |header|
+      assert_equal css_select("tbody tr").size, column_cells(header).size
+      assert column_cells(header).all? { |cell| cell.classes.include?("privacy-sensitive") }, "#{header} cells are not privacy-sensitive"
+    end
+    count_headers.each do |header|
+      assert column_cells(header).none? { |cell| cell.classes.include?("privacy-sensitive") }, "#{header} cells are privacy-sensitive"
+    end
   end
 
   test "choosing a month loads it without a submit button" do
@@ -115,6 +138,20 @@ class Admin::UsageCostsControllerTest < ActionDispatch::IntegrationTest
     assert_select "input[name='plaid_rates[investments_holdings]'][value='0.125']"
     assert_select "select[name^='plaid_rates']", count: 0
     assert_select "[data-action*='money-field#insertOperator']", count: 0
+  end
+
+  test "a saved rate shows at least two decimals and a blur keeps them" do
+    Setting.plaid_rate_transactions = BigDecimal("0.2")
+    Setting.plaid_rate_liabilities = BigDecimal("3")
+    sign_in @super_admin
+
+    get admin_usage_costs_path(month: "2026-10")
+
+    assert_select "input[name='plaid_rates[transactions]'][value='0.20']"
+    assert_select "input[name='plaid_rates[liabilities]'][value='3.00']"
+    # Read by money_field_controller, which pads an unrounded rate typed as
+    # ".2" to "0.20" when the field loses focus.
+    assert_select "[data-controller='money-field'][data-money-field-min-precision-value='2']", count: PlaidItemUsage::RATE_SETTINGS.size
   end
 
   test "rates form groups the rates by product" do
@@ -191,5 +228,15 @@ class Admin::UsageCostsControllerTest < ActionDispatch::IntegrationTest
     def last_cell_of_row(header_text)
       row = css_select("tbody tr").find { |tr| tr.at_css("th")&.text&.include?(header_text) }
       row.css("td").last.text.strip
+    end
+
+    # The body cells under a column heading, across every table on the page.
+    def column_cells(header)
+      css_select("table").flat_map do |table|
+        index = table.css("thead th").map { |th| th.text.strip }.index(header)
+        next [] unless index
+
+        table.css("tbody tr").map { |tr| tr.element_children[index] }
+      end
     end
 end

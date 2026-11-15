@@ -14,6 +14,7 @@ export default class extends Controller {
   static targets = ["amount", "currency", "symbol"];
   static values = {
     precision: Number,
+    minPrecision: Number,
     step: String,
     min: Number,
     max: Number,
@@ -199,7 +200,9 @@ export default class extends Controller {
     event.preventDefault();
     const precision = this.#fieldPrecision();
     this.amountTarget.value =
-      precision === null ? formatUnroundedAmount(parsed) : parsed.toFixed(precision);
+      precision === null
+        ? formatUnroundedAmount(parsed, this.#minPrecision())
+        : parsed.toFixed(precision);
 
     // auto_submit_form listens for "change" on number inputs while validation
     // and the goal form's suggestion listen for "input", and assigning .value
@@ -225,7 +228,12 @@ export default class extends Controller {
     if (result === null) return;
 
     const precision = this.#fieldPrecision();
-    this.amountTarget.value = formatAmountForDisplay(result, precision, raw);
+    this.amountTarget.value = formatAmountForDisplay(
+      result,
+      precision,
+      raw,
+      this.#minPrecision(),
+    );
 
     this.amountTarget.dispatchEvent(new Event("input", { bubbles: true }));
     this.amountTarget.dispatchEvent(new Event("change", { bubbles: true }));
@@ -321,5 +329,13 @@ export default class extends Controller {
     }
 
     return precisionFromStep(this.amountTarget.step);
+  }
+
+  // Decimals an unrounded (step="any") value is padded to on screen, from the
+  // money_field `min_precision` option. Fields without it stay trimmed.
+  #minPrecision() {
+    return this.hasMinPrecisionValue && Number.isInteger(this.minPrecisionValue)
+      ? this.minPrecisionValue
+      : 0;
   }
 }

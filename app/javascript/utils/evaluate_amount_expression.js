@@ -171,9 +171,15 @@ export default function evaluateAmountExpression(value, options = {}) {
 // happens when a number below 1e-6 is converted back through Number()/
 // String(). Trimming the padding zeros toFixed leaves behind keeps a
 // sub-cent crypto price ("0.00000001") intact instead of rounding it to 0.
-export function formatUnroundedAmount(amount) {
+// `minDecimals` pads the trimmed result back out, so a rate typed as ".2"
+// reads "0.20" while "0.125" keeps its third decimal.
+export function formatUnroundedAmount(amount, minDecimals = 0) {
   const fixed = amount.toFixed(10)
-  return fixed.includes(".") ? fixed.replace(/0+$/, "").replace(/\.$/, "") : fixed
+  const trimmed = fixed.includes(".") ? fixed.replace(/0+$/, "").replace(/\.$/, "") : fixed
+  if (minDecimals <= 0) return trimmed
+
+  const [whole, fraction = ""] = trimmed.split(".")
+  return `${whole}.${fraction.padEnd(minDecimals, "0")}`
 }
 
 // Formats a parsed amount back into field text, matching whichever decimal
@@ -182,9 +188,9 @@ export function formatUnroundedAmount(amount) {
 // "12,50" would flip back to "12.50" the instant the field is normalized —
 // exported as a pure function (no DOM) so the round trip is covered by a
 // plain unit test rather than only trusted to work inside a real browser.
-export function formatAmountForDisplay(amount, precision, raw) {
+export function formatAmountForDisplay(amount, precision, raw, minPrecision = 0) {
   const formatted =
-    precision === null ? formatUnroundedAmount(amount) : amount.toFixed(precision)
+    precision === null ? formatUnroundedAmount(amount, minPrecision) : amount.toFixed(precision)
   return typeof raw === "string" && raw.includes(",")
     ? formatted.replace(".", ",")
     : formatted
