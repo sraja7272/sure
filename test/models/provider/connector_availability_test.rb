@@ -7,6 +7,7 @@ class Provider::ConnectorAvailabilityTest < ActiveSupport::TestCase
 
   teardown do
     Setting.disabled_connectors = []
+    Setting.connectors_last_save = nil
   end
 
   test "lists every registered connector once, keyed by provider" do
@@ -45,6 +46,15 @@ class Provider::ConnectorAvailabilityTest < ActiveSupport::TestCase
       Provider::ConnectorAvailability.update!([])
     end
     assert Provider::ConnectorAvailability.enabled?("plaid")
+  end
+
+  test "update! ignores an older save from the same page but not from another page" do
+    assert Provider::ConnectorAvailability.update!(%w[plaid simplefin], client_id: "page-1", sequence: 2)
+    assert_not Provider::ConnectorAvailability.update!(%w[plaid], client_id: "page-1", sequence: 1)
+    assert_equal %w[plaid simplefin], Provider::ConnectorAvailability.enabled_keys.sort
+
+    assert Provider::ConnectorAvailability.update!(%w[plaid], client_id: "page-2", sequence: 1)
+    assert_equal %w[plaid], Provider::ConnectorAvailability.enabled_keys
   end
 
   test "update! refuses unknown connectors" do

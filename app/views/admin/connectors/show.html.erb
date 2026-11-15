@@ -3,28 +3,12 @@
 <div class="space-y-4">
   <p class="text-secondary"><%= t(".description") %></p>
 
-  <%= styled_form_with url: admin_connectors_path, method: :patch, data: { controller: "auto-submit-form" } do |form| %>
-    <div class="space-y-4">
-      <% { "Bank" => t(".kinds.bank"), "Investment" => t(".kinds.investment"), "Crypto" => t(".kinds.crypto") }.each do |kind, title| %>
-        <% connectors = @connectors_by_kind[kind] %>
-        <% next if connectors.blank? %>
+  <%= styled_form_with url: admin_connectors_path, method: :patch, data: { controller: "connector-switches" } do |form| %>
+    <%= hidden_field_tag :client_id, nil, id: nil, data: { connector_switches_target: "clientId" } %>
+    <%= hidden_field_tag :sequence, nil, id: nil, data: { connector_switches_target: "sequence" } %>
 
-        <%= settings_section title: title do %>
-          <div class="divide-y divide-alpha-black-200 theme-dark:divide-alpha-white-200">
-            <% connectors.each do |connector| %>
-              <div class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-                <label for="connector_<%= connector.key %>" class="font-medium text-primary"><%= connector.name %></label>
-                <%= render DS::Toggle.new(
-                  id: "connector_#{connector.key}",
-                  name: "connectors[#{connector.key}]",
-                  checked: @enabled_keys.include?(connector.key),
-                  data: { "auto-submit-form-target": "auto" }
-                ) %>
-              </div>
-            <% end %>
-          </div>
-        <% end %>
-      <% end %>
+    <div class="space-y-4">
+      <%= render "admin/connectors/switches" %>
 
       <p class="text-sm text-secondary"><%= t(".at_least_one") %></p>
     </div>

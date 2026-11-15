@@ -32,6 +32,8 @@ class Provider::ConnectorAvailability
 
   KINDS = %w[Bank Investment Crypto].freeze
 
+  LOCK_KEY = Zlib.crc32("provider_connector_availability")
+
   class << self
     # Every connector, sorted by name.
     # @return [Array<Connector>]
@@ -74,14 +76,39 @@ class Provider::ConnectorAvailability
     end
 
     # Replaces the set of enabled connectors. At least one must stay on.
+    #
+    # The Connectors page saves on every change, so saves can overlap. Each one
+    # names its page (client_id) and a counter (sequence); a save older than the
+    # last one applied from the same page is ignored.
+    #
     # @param enabled [Array<String>] connector keys to leave on
-    def update!(enabled)
+    # @return [Boolean] false when the save was ignored as out of date
+    def update!(enabled, client_id: nil, sequence: nil)
       enabled = Array(enabled).map { |k| normalize_key(k) }.uniq
       unknown = enabled - keys
       raise UnknownConnectorError, "Unknown connectors: #{unknown.join(', ')}" if unknown.any?
       raise NoneEnabledError, "At least one connector must stay enabled" if enabled.empty?
 
-      Setting.disabled_connectors = keys - enabled
+      Setting.transaction do
+        Setting.connection.execute("SELECT pg_advisory_xact_lock(#{LOCK_KEY})")
+        Setting.clear_cache
+
+        if stale_save?(client_id, sequence)
+          false
+        else
+          Setting.connectors_last_save = "#{client_id}:#{sequence.to_i}" if client_id.present?
+          Setting.disabled_connectors = keys - enabled
+          true
+        end
+      end
     end
+
+    private
+      def stale_save?(client_id, sequence)
+        return false if client_id.blank?
+
+        last_client_id, _, last_sequence = Setting.connectors_last_save.to_s.rpartition(":")
+        last_client_id == client_id.to_s && sequence.to_i <= last_sequence.to_i
+      end
   end
 end

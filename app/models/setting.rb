@@ -107,6 +107,9 @@ class Setting < RailsSettings::Base
   # Account connectors a super admin has switched off (Provider::ConnectorAvailability).
   # Empty means every connector is offered.
   field :disabled_connectors, type: :array, default: []
+  # "<page id>:<sequence>" of the last save from the Connectors page, so a save
+  # that arrives after a newer one from the same page is ignored.
+  field :connectors_last_save, type: :string
 
   # New provider API keys (encrypted at rest — see EncryptedSettingFields below)
   field :tiingo_api_key, type: :string, default: ENV["TIINGO_API_KEY"]
