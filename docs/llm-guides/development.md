@@ -36,12 +36,14 @@ email previews. Use Docker/devcontainers where useful for consistent environment
 
 ## Before opening a pull request
 
-Run these checks locally before **every** PR. All required checks must pass before
-PR creation; the full suite is also required to be green before pushing.
+Run these checks locally before **every** PR. All of them must pass before PR
+creation. The full Minitest and system suites run in CI on the pull request, not
+locally.
 
-1. `bin/rails test` — the full Minitest suite is always required.
-2. `DISABLE_PARALLELIZATION=true bin/rails test:system` — required when system tests
-   are applicable to the change; keep system-test additions focused on critical flows.
+1. `bin/rails test <paths>` — the test files covering the code you changed.
+2. `DISABLE_PARALLELIZATION=true bin/rails test:system <paths>` — optional locally,
+   for system tests the change touches; keep system-test additions focused on
+   critical flows.
 3. `bin/rubocop -f github -a` — Ruby lint with safe autocorrection.
 4. `bundle exec erb_lint ./app/**/*.erb -a` — ERB lint with autocorrection.
 5. `npm run lint` — keep Biome clean. Use `npm run format:check` for formatting
@@ -49,8 +51,8 @@ PR creation; the full suite is also required to be green before pushing.
 6. `bin/brakeman --no-pager` — security analysis for every PR.
 
 Inspect autocorrections before committing; keep the diff focused. Record checks
-and any failures accurately. Focused tests help during development but do not
-replace the required full pre-PR suite.
+and any failures accurately. Focused tests do not replace the full suite: the PR
+is not ready until its CI run is green.
 
 CI has its own executable definition in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)
 and callers. Its unit and system jobs are separate; CI runs system tests even though
