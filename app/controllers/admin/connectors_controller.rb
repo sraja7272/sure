@@ -6,9 +6,10 @@ module Admin
       set_page
     end
 
-    # The page saves batched switch changes in the background and keeps its own
-    # switch state, so a successful save answers with nothing: redrawing the
-    # switches could undo clicks made while the save was in flight.
+    # The page saves batched switch changes in the background, keeps its own
+    # switch state and shows one "saved" notice per batch itself, so a
+    # successful save answers with nothing: redrawing the switches could undo
+    # clicks made while the save was in flight.
     def update
       Provider::ConnectorAvailability.update!(
         enabled_keys_param, client_id: params[:client_id], sequence: params[:sequence]

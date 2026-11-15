@@ -3,9 +3,13 @@
 <div class="space-y-4">
   <p class="text-secondary"><%= t(".description") %></p>
 
-  <%= styled_form_with url: admin_connectors_path, method: :patch, data: { controller: "connector-switches" } do |form| %>
+  <%= styled_form_with url: admin_connectors_path, method: :patch,
+        data: { controller: "connector-switches", action: "turbo:submit-end->connector-switches#saved" } do |form| %>
     <%= hidden_field_tag :client_id, nil, id: nil, data: { connector_switches_target: "clientId" } %>
     <%= hidden_field_tag :sequence, nil, id: nil, data: { connector_switches_target: "sequence" } %>
+    <template data-connector-switches-target="notice">
+      <%= render "shared/notifications/notice", message: t("admin.connectors.update.success") %>
+    </template>
 
     <div class="space-y-4">
       <%= render "admin/connectors/switches" %>

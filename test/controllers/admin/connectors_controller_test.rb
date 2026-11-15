@@ -18,6 +18,7 @@ class Admin::ConnectorsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "form[data-controller='connector-switches']"
+    assert_select "template[data-connector-switches-target='notice']"
     Provider::ConnectorAvailability.keys.each do |key|
       assert_select "input[type=checkbox][name='connectors[#{key}]'][data-action='change->connector-switches#save']"
     end
