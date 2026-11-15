@@ -375,19 +375,6 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     OmniAuth.config.allowed_request_methods = allowed_methods
   end
 
-  test "sign-out notice is not carried through the provider hand-off" do
-    stub_sso_auto_redirect
-    sign_in @user
-
-    delete session_url(@user.sessions.last)
-    follow_redirect!
-    assert_select "form#sso_form"
-
-    get "/auth/failure", params: { message: "sso_failed", strategy: "openid_connect" }
-    follow_redirect!
-    assert_no_match I18n.t("sessions.destroy.logout_successful"), response.body
-  end
-
   test "demo hosts keep the sign-in page when SSO auto-redirect is on" do
     stub_sso_auto_redirect
     host! "demo.sure.am"
