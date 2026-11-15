@@ -2,15 +2,16 @@ class Provider::Openai::ProviderMerchantEnhancer
   include Provider::Openai::Concerns::UsageRecorder
   include Provider::Openai::Concerns::JsonMode
 
-  attr_reader :client, :model, :merchants, :custom_provider, :langfuse_trace, :family, :json_mode
+  attr_reader :client, :model, :merchants, :custom_provider, :langfuse_trace, :family, :user, :json_mode
 
-  def initialize(client, model: "", merchants:, custom_provider: false, langfuse_trace: nil, family: nil, json_mode: nil)
+  def initialize(client, model: "", merchants:, custom_provider: false, langfuse_trace: nil, family: nil, user: nil, json_mode: nil)
     @client = client
     @model = model
     @merchants = merchants
     @custom_provider = custom_provider
     @langfuse_trace = langfuse_trace
     @family = family
+    @user = user
     @json_mode = json_mode || default_json_mode
   end
 

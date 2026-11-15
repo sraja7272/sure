@@ -255,6 +255,7 @@ class ImportsControllerTest < ActionDispatch::IntegrationTest
     statement = AccountStatement.order(:created_at).last
     created_import = PdfImport.order(:created_at).last
     assert_equal statement, created_import.account_statement
+    assert_equal @user, created_import.user
     assert_not created_import.pdf_file.attached?
     assert_redirected_to import_url(created_import)
     assert_equal I18n.t("imports.create.pdf_processing"), flash[:notice]

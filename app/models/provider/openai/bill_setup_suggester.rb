@@ -1,9 +1,9 @@
 class Provider::Openai::BillSetupSuggester
   include Provider::Openai::Concerns::UsageRecorder
 
-  attr_reader :client, :model, :charges, :categories, :current_config, :langfuse_trace, :family
+  attr_reader :client, :model, :charges, :categories, :current_config, :langfuse_trace, :family, :user
 
-  def initialize(client, model: "", charges: [], categories: [], current_config: nil, langfuse_trace: nil, family: nil)
+  def initialize(client, model: "", charges: [], categories: [], current_config: nil, langfuse_trace: nil, family: nil, user: nil)
     @client = client
     @model = model
     @charges = charges
@@ -11,6 +11,7 @@ class Provider::Openai::BillSetupSuggester
     @current_config = current_config
     @langfuse_trace = langfuse_trace
     @family = family
+    @user = user
   end
 
   # One chat-completions call with a json_object response format, falling back

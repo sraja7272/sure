@@ -145,6 +145,24 @@ class PdfImportReconciliationTest < ActiveSupport::TestCase
     assert_equal "Coffee", @import.extracted_transactions.first["name"]
   end
 
+  test "AI processing and extraction are charged to the uploader" do
+    uploader = users(:family_member)
+    @import.update!(user: uploader)
+    @import.stubs(:pdf_file_content).returns("fake-pdf")
+    provider = mock("llm_provider")
+    Provider::Registry.stubs(:preferred_llm_provider).returns(provider)
+    provider.stubs(:supports_pdf_processing?).returns(true)
+    provider.expects(:process_pdf).with { |**kwargs| kwargs[:user] == uploader && kwargs[:family] == @family }.returns(
+      OpenStruct.new(success?: true, data: Provider::LlmConcept::PdfProcessingResult.new(summary: "Statement", document_type: "bank_statement", extracted_data: {}))
+    )
+    provider.expects(:extract_bank_statement).with { |**kwargs| kwargs[:user] == uploader && kwargs[:family] == @family }.returns(
+      OpenStruct.new(success?: true, data: { transactions: [] })
+    )
+
+    @import.process_with_ai
+    @import.extract_transactions
+  end
+
   test "extract_transactions syncs period and balances to statement_backed import" do
     provider = mock("llm_provider")
     Provider::Registry.stubs(:preferred_llm_provider).returns(provider)

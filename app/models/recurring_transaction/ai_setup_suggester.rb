@@ -53,7 +53,8 @@ class RecurringTransaction
           charges: charges,
           categories: family.categories.pluck(:name),
           current_config: current_config,
-          family: family
+          family: family,
+          user: user
         )
 
         raise Error, "Provider failed: #{result.error&.message}" unless result.success?

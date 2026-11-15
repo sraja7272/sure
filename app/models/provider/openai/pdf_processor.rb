@@ -2,10 +2,10 @@ class Provider::Openai::PdfProcessor
   include Provider::Openai::Concerns::UsageRecorder
   include Provider::Openai::Concerns::JsonMode
 
-  attr_reader :client, :model, :pdf_content, :custom_provider, :langfuse_trace, :family, :max_response_tokens,
+  attr_reader :client, :model, :pdf_content, :custom_provider, :langfuse_trace, :family, :user, :max_response_tokens,
               :processing_mode, :json_mode
 
-  def initialize(client, model: "", pdf_content: nil, custom_provider: false, langfuse_trace: nil, family: nil,
+  def initialize(client, model: "", pdf_content: nil, custom_provider: false, langfuse_trace: nil, family: nil, user: nil,
                  max_response_tokens:, processing_mode: :auto, json_mode: nil)
     @client = client
     @model = model
@@ -13,6 +13,7 @@ class Provider::Openai::PdfProcessor
     @custom_provider = custom_provider
     @langfuse_trace = langfuse_trace
     @family = family
+    @user = user
     @max_response_tokens = max_response_tokens
     @processing_mode = processing_mode
     @json_mode = json_mode || default_json_mode

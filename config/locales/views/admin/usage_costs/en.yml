@@ -1,0 +1,39 @@
+---
+en:
+  admin:
+    usage_costs:
+      show:
+        ai_cost: AI cost
+        ai_requests: AI requests
+        download_csv: Download CSV
+        estimates_body: >-
+          Amounts are in USD and are estimates: AI cost comes from the published
+          pricing table and Plaid cost from the rates below, so they will not match
+          provider invoices to the cent.
+        estimates_title: About these figures
+        no_usage: No AI or Plaid usage recorded for this month
+        page_title: Usage cost report
+        person: Person
+        plaid_cost: Plaid cost
+        plaid_items: Plaid items
+        rates:
+          investments_holdings: Holdings, per item per month
+          investments_transactions: Investment transactions, per item per month
+          liabilities: Per item per month
+          transactions: Per item per month
+          transactions_refresh: Refresh, per successful call
+        rates_subtitle: What your Plaid contract charges, in USD. Plaid cost in the report is priced at these rates.
+        rates_title: Plaid rates
+        rates_unused_products: >-
+          These are the only Plaid products Sure calls. Balance, Recurring
+          Transactions, Investments Refresh and Enrich are not used, so they have
+          no rate here.
+        save_rates: Save rates
+        subtitle: Estimated AI and Plaid cost per person across every family
+        subtotal: Subtotal
+        total: Total
+        unassigned: Unassigned
+        unnamed_family: Unnamed family
+      update:
+        invalid: Rates must be numbers of zero or more. Nothing was saved.
+        success: Plaid rates saved

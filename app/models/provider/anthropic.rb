@@ -97,7 +97,7 @@ class Provider::Anthropic < Provider
     @base_url.present?
   end
 
-  def auto_categorize(transactions: [], user_categories: [], model: "", family: nil, json_mode: nil)
+  def auto_categorize(transactions: [], user_categories: [], model: "", family: nil, user: nil, json_mode: nil)
     with_provider_response do
       if user_categories.blank?
         family_id = family&.id || "unknown"
@@ -118,7 +118,8 @@ class Provider::Anthropic < Provider
         transactions: transactions,
         user_categories: user_categories,
         langfuse_trace: trace,
-        family: family
+        family: family,
+        user: user
       ).auto_categorize
 
       finish_langfuse_trace(trace: trace, output: result.map(&:to_h))
@@ -130,7 +131,7 @@ class Provider::Anthropic < Provider
     end
   end
 
-  def suggest_bill_setup(charges: [], categories: [], current_config: nil, model: "", family: nil)
+  def suggest_bill_setup(charges: [], categories: [], current_config: nil, model: "", family: nil, user: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
 
@@ -146,7 +147,8 @@ class Provider::Anthropic < Provider
         categories: categories,
         current_config: current_config,
         langfuse_trace: trace,
-        family: family
+        family: family,
+        user: user
       ).suggest
 
       finish_langfuse_trace(trace: trace, output: result.to_h)
@@ -158,7 +160,7 @@ class Provider::Anthropic < Provider
     end
   end
 
-  def auto_detect_merchants(transactions: [], user_merchants: [], model: "", family: nil, json_mode: nil)
+  def auto_detect_merchants(transactions: [], user_merchants: [], model: "", family: nil, user: nil, json_mode: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
 
@@ -173,7 +175,8 @@ class Provider::Anthropic < Provider
         transactions: transactions,
         user_merchants: user_merchants,
         langfuse_trace: trace,
-        family: family
+        family: family,
+        user: user
       ).auto_detect_merchants
 
       finish_langfuse_trace(trace: trace, output: result.map(&:to_h))
@@ -185,7 +188,7 @@ class Provider::Anthropic < Provider
     end
   end
 
-  def enhance_provider_merchants(merchants: [], model: "", family: nil, json_mode: nil)
+  def enhance_provider_merchants(merchants: [], model: "", family: nil, user: nil, json_mode: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
 
@@ -199,7 +202,8 @@ class Provider::Anthropic < Provider
         model: effective_model,
         merchants: merchants,
         langfuse_trace: trace,
-        family: family
+        family: family,
+        user: user
       ).enhance_merchants
 
       finish_langfuse_trace(trace: trace, output: result.map(&:to_h))
@@ -217,7 +221,7 @@ class Provider::Anthropic < Provider
     VISION_CAPABLE_MODEL_PREFIXES.any? { |prefix| model.to_s.start_with?(prefix) }
   end
 
-  def process_pdf(pdf_content:, model: "", family: nil)
+  def process_pdf(pdf_content:, model: "", family: nil, user: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
       raise Error, "Model does not support PDF processing: #{effective_model}" unless supports_pdf_processing?(model: effective_model)
@@ -232,7 +236,8 @@ class Provider::Anthropic < Provider
         model: effective_model,
         pdf_content: pdf_content,
         langfuse_trace: trace,
-        family: family
+        family: family,
+        user: user
       ).process
 
       finish_langfuse_trace(trace: trace, output: result.to_h)
@@ -244,7 +249,7 @@ class Provider::Anthropic < Provider
     end
   end
 
-  def extract_bank_statement(pdf_content:, model: "", family: nil)
+  def extract_bank_statement(pdf_content:, model: "", family: nil, user: nil)
     with_provider_response do
       effective_model = model.presence || @default_model
 
@@ -258,7 +263,8 @@ class Provider::Anthropic < Provider
         pdf_content: pdf_content,
         model: effective_model,
         langfuse_trace: trace,
-        family: family
+        family: family,
+        user: user
       ).extract
 
       finish_langfuse_trace(trace: trace, output: { transaction_count: result[:transactions].size })
@@ -283,7 +289,8 @@ class Provider::Anthropic < Provider
     previous_response_id: nil,
     session_id: nil,
     user_identifier: nil,
-    family: nil
+    family: nil,
+    user: nil
   )
     with_provider_response do
       chat_config = ChatConfig.new(
@@ -314,7 +321,7 @@ class Provider::Anthropic < Provider
               streamer: streamer,
               request_params: request_params,
               on_partial: ->(partial_usage) {
-                record_llm_usage(family: family, model: model, operation: "chat", usage: partial_usage)
+                record_llm_usage(family: family, user: user, model: model, operation: "chat", usage: partial_usage)
                 partial_usage_recorded = true
               }
             )
@@ -335,7 +342,7 @@ class Provider::Anthropic < Provider
         # re-raises past here), so today this is the sole recorder. Guard it
         # anyway so a future change that emits partial usage on success can't
         # silently double-bill — the symptom we chased in the #1984 review.
-        record_llm_usage(family: family, model: model, operation: "chat", usage: usage) unless partial_usage_recorded
+        record_llm_usage(family: family, user: user, model: model, operation: "chat", usage: usage) unless partial_usage_recorded
 
         parsed
       rescue => e
@@ -346,7 +353,7 @@ class Provider::Anthropic < Provider
           error: e,
           trace: trace
         )
-        record_llm_usage(family: family, model: model, operation: "chat", error: e) unless partial_usage_recorded
+        record_llm_usage(family: family, user: user, model: model, operation: "chat", error: e) unless partial_usage_recorded
         raise
       end
     end
@@ -452,13 +459,14 @@ class Provider::Anthropic < Provider
       Rails.logger.warn("Langfuse logging failed: #{e.class}: #{e.message}")
     end
 
-    def record_llm_usage(family:, model:, operation:, usage: nil, error: nil)
+    def record_llm_usage(family:, model:, operation:, user: nil, usage: nil, error: nil)
       return unless family
 
       if error.present?
         http_status_code = extract_http_status_code(error)
 
         family.llm_usages.create!(
+          user: user,
           provider: "anthropic",
           model: model,
           operation: operation,
@@ -489,6 +497,7 @@ class Provider::Anthropic < Provider
       )
 
       family.llm_usages.create!(
+        user: user,
         provider: "anthropic",
         model: model,
         operation: operation,

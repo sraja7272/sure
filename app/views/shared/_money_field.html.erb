@@ -138,7 +138,9 @@
         edge (full width, no top border, matching background/border/radius)
         rather than as a separate floating card with its own border and
         gap, so out-of-flow positioning doesn't read as visually detached
-        from the field it belongs to. %>
+        from the field it belongs to. `hide_operators: true` leaves the row
+        out for fields that only take a plain amount. %>
+    <% unless options[:hide_operators] %>
     <div class="hidden group-focus-within/money-field:flex items-center gap-1 absolute left-0 right-0 top-full -mt-px z-10 bg-container border border-t-0 border-secondary rounded-b-md p-1">
       <%= render DS::Button.new(text: "+", variant: :outline, size: :sm,
             data: { action: "mousedown->money-field#insertOperator touchstart->money-field#insertOperator keydown.enter->money-field#insertOperator keydown.space->money-field#insertOperator", "money-field-operator-param": "+" },
@@ -153,5 +155,6 @@
             data: { action: "mousedown->money-field#insertOperator touchstart->money-field#insertOperator keydown.enter->money-field#insertOperator keydown.space->money-field#insertOperator", "money-field-operator-param": "/" },
             aria: { label: t(".operator_divide") }) %>
     </div>
+    <% end %>
   </div>
 </div>

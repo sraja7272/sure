@@ -1,0 +1,41 @@
+<%= content_for :page_title, t(".page_title") %>
+
+<%= settings_section title: l(@report.month, format: :month_year), subtitle: t(".subtitle") do %>
+  <%= render "shared/usage_cost_month_nav", report: @report %>
+
+  <%= render "shared/usage_cost_summary", totals: @report.grand_total %>
+
+  <% if @report.lines.empty? %>
+    <%= render DS::EmptyState.new(icon: "receipt", title: t(".no_usage")) %>
+  <% else %>
+    <% ai_lines = @report.ai_cost_by_operation %>
+    <% if ai_lines.any? %>
+      <section class="space-y-2">
+        <h3 class="text-sm font-medium text-primary"><%= t(".ai_title") %></h3>
+
+        <%= render DS::Table.new(rows: ai_lines, label: t(".ai_title")) do |table| %>
+          <% table.with_column(t(".feature"), row_header: true) { |line| usage_cost_operation_label(line.operation) } %>
+          <% table.with_column(t(".requests"), numeric: true) { |line| render "shared/usage_cost_requests", requests: line.ai_requests, unpriced: line.ai_unpriced_requests } %>
+          <% table.with_column(t(".cost"), numeric: true) { |line| format_usage_cost(line.ai_cost, precision: 4) } %>
+        <% end %>
+      </section>
+    <% end %>
+
+    <% if @report.plaid_rows.any? %>
+      <section class="space-y-2">
+        <h3 class="text-sm font-medium text-primary"><%= t(".plaid_title") %></h3>
+
+        <%= render DS::Table.new(rows: @report.plaid_rows, label: t(".plaid_title")) do |table| %>
+          <% table.with_column(t(".institution"), row_header: true) { |row| row.institution_name.presence || t(".unnamed_institution") } %>
+          <% table.with_column(t(".products")) { |row| usage_cost_products_label(row.billed_products) } %>
+          <% table.with_column(t(".refreshes"), numeric: true) { |row| number_with_delimiter(row.transactions_refresh_count).to_s } %>
+          <% table.with_column(t(".cost"), numeric: true) { |row| format_usage_cost(row.cost) } %>
+        <% end %>
+      </section>
+    <% end %>
+  <% end %>
+
+  <%= render DS::Note.new(title: t(".estimates_title")) do %>
+    <p><%= t(".estimates_body") %></p>
+  <% end %>
+<% end %>

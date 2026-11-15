@@ -1,0 +1,15 @@
+<%# locals: (totals:) %>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-2">
+  <%= summary_card title: t("usage_costs.summary.total") do %>
+    <%= format_usage_cost(totals.total) %>
+  <% end %>
+
+  <%= summary_card title: t("usage_costs.summary.ai_cost") do %>
+    <%= format_usage_cost(totals.ai_cost, precision: 4) %>
+  <% end %>
+
+  <%= summary_card title: t("usage_costs.summary.plaid_cost") do %>
+    <%= format_usage_cost(totals.plaid_cost) %>
+  <% end %>
+</div>

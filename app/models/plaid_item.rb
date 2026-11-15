@@ -147,6 +147,22 @@ class PlaidItem < ApplicationRecord
     )
 
     save!
+    record_usage
+  end
+
+  # Never raises: a ledger failure must not break a sync or a new connection.
+  def record_usage
+    PlaidItemUsage.record!(self)
+  rescue => error
+    DebugLogEntry.capture(
+      category: "provider_sync",
+      level: "warn",
+      message: "Plaid item usage could not be recorded",
+      source: self.class.name,
+      provider_key: "plaid",
+      family: family,
+      metadata: { plaid_item_id: id, error_class: error.class.name }
+    )
   end
 
   # Saves the raw data fetched from Plaid API for this item's institution

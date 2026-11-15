@@ -4,15 +4,16 @@ class Provider::Anthropic::AutoCategorizer
 
   TOOL_NAME = "report_categorizations".freeze
 
-  attr_reader :client, :model, :transactions, :user_categories, :langfuse_trace, :family
+  attr_reader :client, :model, :transactions, :user_categories, :langfuse_trace, :family, :user
 
-  def initialize(client, model:, transactions: [], user_categories: [], langfuse_trace: nil, family: nil)
+  def initialize(client, model:, transactions: [], user_categories: [], langfuse_trace: nil, family: nil, user: nil)
     @client = client
     @model = model
     @transactions = transactions
     @user_categories = user_categories
     @langfuse_trace = langfuse_trace
     @family = family
+    @user = user
   end
 
   def auto_categorize

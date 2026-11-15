@@ -19,6 +19,16 @@ class RecurringTransaction::AiSetupSuggesterTest < ActiveSupport::TestCase
     end
   end
 
+  test "charges the acting user for the suggestion" do
+    provider = mock
+    provider.expects(:suggest_bill_setup)
+            .with { |**kwargs| kwargs[:user] == @user && kwargs[:family] == @family }
+            .returns(Provider::Response.new(success?: true, data: raw(name: "Gym"), error: nil))
+    Provider::Registry.stubs(:preferred_llm_provider).returns(provider)
+
+    Suggester.new(@family, user: @user).suggest_from_entries(@entries)
+  end
+
   test "raises on empty charge history instead of asking the model to guess" do
     stub_provider(raw(name: "X"))
 

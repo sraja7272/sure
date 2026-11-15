@@ -1,0 +1,29 @@
+---
+en:
+  usage_costs:
+    month_nav:
+      month: Month
+      next: Next month
+      previous: Previous month
+    operations:
+      auto_categorize: Auto-categorization
+      auto_detect_merchants: Merchant detection
+      chat: AI chat
+      enhance_provider_merchants: Merchant enhancement
+      extract_bank_statement: Bank statement extraction
+      process_pdf: PDF import
+      process_pdf_vision: PDF import (scanned)
+      suggest_bill_setup: Bill smart-fill
+    products:
+      investments: Investments
+      liabilities: Liabilities
+      transactions: Transactions
+    requests:
+      unpriced:
+        one: "%{count} unpriced"
+        other: "%{count} unpriced"
+      unpriced_help: Requests to a model with no pricing entry. Their cost is not included.
+    summary:
+      ai_cost: AI cost (USD)
+      plaid_cost: Plaid cost (USD)
+      total: Estimated total (USD)

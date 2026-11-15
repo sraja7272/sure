@@ -34,6 +34,8 @@ en:
       system_health_label: System health
       tags_label: Tags
       transactions_section_title: Transactions
+      usage_cost_report_label: Usage cost report
+      usage_costs_label: My usage costs
       users_label: Users
       whats_new_label: What's new
       api_keys_label: API Keys

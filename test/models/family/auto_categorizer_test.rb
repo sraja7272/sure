@@ -38,6 +38,44 @@ class Family::AutoCategorizerTest < ActiveSupport::TestCase
     assert_equal 1, @account.transactions.reload.enrichable(:category_id).count
   end
 
+  test "a batch from one owner's accounts is one provider call charged to that owner" do
+    @account.update!(owner: users(:family_member))
+    txn1 = create_transaction(account: @account, name: "McDonalds").transaction
+    txn2 = create_transaction(account: @account, name: "Amazon").transaction
+    category = @family.categories.create!(name: "Test category")
+
+    @llm_provider.expects(:auto_categorize)
+                 .with { |**kwargs| kwargs[:user] == users(:family_member) && kwargs[:transactions].map { |t| t[:id] }.sort == [ txn1.id, txn2.id ].sort }
+                 .returns(provider_success_response([
+                   AutoCategorization.new(transaction_id: txn1.id, category_name: category.name),
+                   AutoCategorization.new(transaction_id: txn2.id, category_name: category.name)
+                 ])).once
+
+    assert_equal 2, Family::AutoCategorizer.new(@family, transaction_ids: [ txn1.id, txn2.id ]).auto_categorize
+  end
+
+  test "a mixed batch makes one provider call per account owner, including ownerless accounts" do
+    @account.update!(owner: users(:family_admin))
+    member_account = @family.accounts.create!(name: "Member", balance: 0, currency: "USD", accountable: Depository.new, owner: users(:family_member))
+    ownerless_account = @family.accounts.create!(name: "Ownerless", balance: 0, currency: "USD", accountable: Depository.new)
+    ownerless_account.update_column(:owner_id, nil)
+
+    admin_txn = create_transaction(account: @account, name: "McDonalds").transaction
+    member_txn = create_transaction(account: member_account, name: "Amazon").transaction
+    ownerless_txn = create_transaction(account: ownerless_account, name: "Netflix").transaction
+    category = @family.categories.create!(name: "Test category")
+
+    { users(:family_admin) => admin_txn, users(:family_member) => member_txn, nil => ownerless_txn }.each do |owner, txn|
+      @llm_provider.expects(:auto_categorize)
+                   .with { |**kwargs| kwargs[:user] == owner && kwargs[:transactions].map { |t| t[:id] } == [ txn.id ] }
+                   .returns(provider_success_response([ AutoCategorization.new(transaction_id: txn.id, category_name: category.name) ]))
+                   .once
+    end
+
+    assert_equal 3, Family::AutoCategorizer.new(@family, transaction_ids: [ admin_txn.id, member_txn.id, ownerless_txn.id ]).auto_categorize
+    assert_equal [ category ] * 3, [ admin_txn, member_txn, ownerless_txn ].map { |t| t.reload.category }
+  end
+
   test "raises when provider returns an unsuccessful response" do
     txn = create_transaction(account: @account, name: "Coffee shop").transaction
     @family.categories.create!(name: "Coffee")
@@ -395,6 +433,25 @@ class Family::AutoCategorizerTest < ActiveSupport::TestCase
     assert_equal applied.name, comparison.applied_category_name
     assert_equal shadowed.name, comparison.shadow_category_name
     assert_in_delta 0.88, comparison.shadow_confidence, 0.001
+  end
+
+  test "the shadow provider is charged per account owner too" do
+    @family.update!(categorization_shadow_rate: 1.0)
+    @account.update!(owner: users(:family_member))
+    txn = create_transaction(account: @account, name: "Blue Bottle Coffee").transaction
+    category = @family.categories.create!(name: "Coffee")
+
+    openai = Provider::Openai.allocate
+    Provider::Registry.stubs(:preferred_llm_provider).returns(openai)
+    openai.expects(:auto_categorize).with { |**kwargs| kwargs[:user] == users(:family_member) }
+          .returns(provider_success_response([ AutoCategorization.new(transaction_id: txn.id, category_name: category.name) ])).once
+
+    jev = Provider::Jev.allocate
+    Provider::Registry.stubs(:get_provider).with(:jev).returns(jev)
+    jev.expects(:auto_categorize).with { |**kwargs| kwargs[:user] == users(:family_member) }
+       .returns(provider_success_response([])).once
+
+    Family::AutoCategorizer.new(@family, transaction_ids: [ txn.id ]).auto_categorize
   end
 
   test "does not score a missing shadow answer as agreement" do

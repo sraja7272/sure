@@ -1,0 +1,168 @@
+require "test_helper"
+
+class Admin::UsageCostsControllerTest < ActionDispatch::IntegrationTest
+  RATE_SETTINGS = PlaidItemUsage::RATE_SETTINGS.values.map(&:to_s).freeze
+
+  setup do
+    @super_admin = users(:sure_support_staff)
+    @member = users(:family_member)
+
+    LlmUsage.create!(
+      family: @member.family, user: @member, provider: "openai", model: "gpt-4.1", operation: "chat",
+      prompt_tokens: 10, completion_tokens: 5, total_tokens: 15, estimated_cost: "0.4321",
+      created_at: Time.zone.local(2026, 10, 15, 12)
+    )
+    LlmUsage.create!(
+      family: @member.family, user: nil, provider: "custom", model: "local-llm", operation: "chat",
+      prompt_tokens: 10, completion_tokens: 5, total_tokens: 15, estimated_cost: nil,
+      created_at: Time.zone.local(2026, 10, 15, 12)
+    )
+  end
+
+  teardown do
+    Setting.where(var: RATE_SETTINGS).delete_all
+    Setting.clear_cache
+  end
+
+  test "super admin sees the month's report grouped by family" do
+    sign_in @super_admin
+
+    get admin_usage_costs_path(month: "2026-10")
+
+    assert_response :success
+    assert_includes response.body, @member.display_name
+    assert_includes response.body, @member.family.name
+    assert_includes response.body, I18n.t("admin.usage_costs.show.unassigned")
+    assert_includes response.body, I18n.t("usage_costs.requests.unpriced", count: 1)
+    assert_select "a[href='#{admin_usage_costs_path(month: "2026-09")}']"
+    assert_includes response.body, I18n.t("admin.usage_costs.show.estimates_body")
+    assert_not_includes response.body, "Attribution to people"
+  end
+
+  test "choosing a month loads it without a submit button" do
+    sign_in @super_admin
+
+    get admin_usage_costs_path(month: "2026-10")
+
+    assert_select "form[method='get'][data-controller='auto-submit-form']" do
+      assert_select "label.sr-only[for='month']", text: I18n.t("usage_costs.month_nav.month")
+      assert_select "input[type='month'][name='month'][value='2026-10'][data-auto-submit-form-target='auto']"
+      assert_select "button[type='submit'], input[type='submit']", count: 0
+    end
+  end
+
+  test "super admin downloads the month as CSV" do
+    sign_in @super_admin
+
+    get admin_usage_costs_path(month: "2026-10", format: :csv)
+
+    assert_response :success
+    assert_equal "text/csv", response.media_type
+    assert_includes response.headers["Content-Disposition"], "usage-costs-2026-10.csv"
+    rows = CSV.parse(response.body)
+    assert_equal "Period", rows.first.first
+    assert_includes rows.map { |row| row[2] }, @member.display_name
+  end
+
+  test "family admins and members are redirected" do
+    %i[family_admin family_member].each do |fixture|
+      sign_in users(fixture)
+
+      get admin_usage_costs_path
+
+      assert_redirected_to root_path
+      assert_equal I18n.t("admin.unauthorized"), flash[:alert]
+    end
+  end
+
+  test "only super admins get the report in the settings nav" do
+    sign_in @super_admin
+    get settings_preferences_path
+    assert_select "nav a[href='#{admin_usage_costs_path}']", count: 2
+
+    sign_in users(:family_admin)
+    get settings_preferences_path
+    assert_select "nav a[href='#{admin_usage_costs_path}']", count: 0
+  end
+
+  test "rate inputs show the dollar sign and keep sub-cent rates" do
+    Setting.plaid_rate_investments_holdings = BigDecimal("0.125")
+    sign_in @super_admin
+
+    get admin_usage_costs_path(month: "2026-10")
+
+    assert_response :success
+    PlaidItemUsage::RATE_SETTINGS.each_key do |key|
+      assert_select "span[data-money-field-target='symbol'] + input[name='plaid_rates[#{key}]']"
+    end
+    assert_select "span[data-money-field-target='symbol']", text: Money::Currency.new("USD").symbol, count: 5
+    assert_select "input[name='plaid_rates[transactions]'][value='0.00']"
+    assert_select "input[name='plaid_rates[investments_holdings]'][value='0.125']"
+    assert_select "select[name^='plaid_rates']", count: 0
+    assert_select "[data-action*='money-field#insertOperator']", count: 0
+  end
+
+  test "rates form groups the rates by product" do
+    sign_in @super_admin
+
+    get admin_usage_costs_path(month: "2026-10")
+
+    groups = css_select("form fieldset").map do |fieldset|
+      [ fieldset.at_css("legend").text.strip, fieldset.css("input[name^='plaid_rates']").map { |input| input["name"] } ]
+    end
+    assert_equal [
+      [ "Transactions", %w[plaid_rates[transactions] plaid_rates[transactions_refresh]] ],
+      [ "Investments", %w[plaid_rates[investments_holdings] plaid_rates[investments_transactions]] ],
+      [ "Liabilities", %w[plaid_rates[liabilities]] ]
+    ], groups
+    assert_includes response.body, I18n.t("admin.usage_costs.show.rates_unused_products")
+  end
+
+  test "update saves the Plaid rates" do
+    sign_in @super_admin
+
+    patch admin_usage_costs_path, params: {
+      month: "2026-10",
+      plaid_rates: {
+        transactions: "0.30", transactions_refresh: "0.12",
+        investments_holdings: "0.18", investments_transactions: "0.07", liabilities: "0.2"
+      }
+    }
+
+    assert_redirected_to admin_usage_costs_path(month: "2026-10")
+    assert_equal I18n.t("admin.usage_costs.update.success"), flash[:notice]
+    assert_equal BigDecimal("0.30"), Setting.plaid_rate_transactions.to_d
+    assert_equal BigDecimal("0.18"), Setting.plaid_rate_investments_holdings.to_d
+    assert_equal BigDecimal("0.07"), Setting.plaid_rate_investments_transactions.to_d
+    assert_equal BigDecimal("0.2"), Setting.plaid_rate_liabilities.to_d
+    assert_equal BigDecimal("0.12"), Setting.plaid_rate_transactions_refresh.to_d
+  end
+
+  test "update rejects a negative or non-numeric rate and saves nothing" do
+    sign_in @super_admin
+
+    [ "-1", "abc", "" ].each do |bad|
+      patch admin_usage_costs_path, params: {
+        month: "2026-10",
+        plaid_rates: {
+          transactions: "0.30", transactions_refresh: "0.12",
+          investments_holdings: bad, investments_transactions: "0.07", liabilities: "0.2"
+        }
+      }
+
+      assert_redirected_to admin_usage_costs_path(month: "2026-10")
+      assert_equal I18n.t("admin.usage_costs.update.invalid"), flash[:alert]
+      assert_equal 0, Setting.plaid_rate_transactions.to_d
+      assert_equal 0, Setting.plaid_rate_investments_holdings.to_d
+    end
+  end
+
+  test "non-super-admins cannot update the rates" do
+    sign_in users(:family_admin)
+
+    patch admin_usage_costs_path, params: { plaid_rates: { transactions: "9.99" } }
+
+    assert_redirected_to root_path
+    assert_equal 0, Setting.plaid_rate_transactions.to_d
+  end
+end

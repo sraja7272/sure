@@ -7,6 +7,7 @@ module SettingsHelper
     { name: -> { t("settings.settings_nav.appearance_label") }, path: :settings_appearance_path },
     { name: -> { t("settings.settings_nav.profile_label") }, path: :settings_profile_path },
     { name: -> { t("settings.settings_nav.security_label") }, path: :settings_security_path },
+    { name: -> { t("settings.settings_nav.usage_costs_label") }, path: :settings_usage_costs_path },
     { name: -> { t("settings.settings_nav.payment_label") }, path: :settings_payment_path, condition: :not_self_hosted? },
     # Transactions section
     { name: -> { t("settings.settings_nav.categories_label") }, path: :categories_path },

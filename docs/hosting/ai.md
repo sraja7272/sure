@@ -1276,6 +1276,42 @@ CHAT_MODEL=gpt-4.1
 
 **Note:** Sure currently uses a single provider for all operations, but this could be customized.
 
+### Per-Person Cost Reporting
+
+Sure records which person each AI request and Plaid connection is charged to:
+
+- **AI requests** go to the person who started them: chat, bill smart-fill and
+  merchant enhancement go to the person who asked. Auto-categorization and
+  merchant detection go to the owner of the transaction's account. PDF imports
+  go to the person who uploaded the file. Anything else, such as work with no
+  person behind it or on an account without an owner, is **Unassigned**.
+- **Plaid** has a monthly ledger with one row per connection per month. A row
+  lists the products Plaid billed for that connection and how many transactions
+  refresh calls it made, and is kept after the connection is deleted. Each row
+  is charged to the connection's owner. Plaid does not report prices through its
+  API, so a super admin enters the contract's USD rates, five in all:
+  - Transactions, per connection per month
+  - Transactions refresh, per successful call
+  - Investments holdings, per connection per month
+  - Investment transactions, per connection per month
+  - Liabilities, per connection per month
+
+  Plaid bills investments as two products, and Sure calls both on every sync of
+  a connection with investments, so such a connection costs both investment
+  rates. Sure does not call Balance, Recurring Transactions, Investments Refresh
+  or Enrich, so they have no rate.
+
+Super admins see every family and person for a month, can download the report as
+CSV, and set the Plaid rates at **Settings → Usage cost report**
+(`/admin/usage_costs`). Every user sees their own figures at **Settings → My usage
+costs** (`/settings/usage_costs`).
+
+All figures are estimates in USD, using the pricing table above and the Plaid
+rates you entered. Requests to models with no pricing entry are counted as
+unpriced, not as free. Failed requests are left out. Tracking starts from the
+upgrade that added this report: AI usage recorded earlier shows as Unassigned,
+and the Plaid ledger starts with the connections that existed at that point.
+
 ## Troubleshooting
 
 ### "Messages is invalid" Error

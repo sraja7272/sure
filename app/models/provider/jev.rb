@@ -153,8 +153,9 @@ class Provider::Jev < Provider
   # Mirrors Provider::LlmConcept#auto_categorize's signature so the existing
   # categorization eval runner and Family::AutoCategorizer consume this provider
   # without changes. `json_mode` is accepted and ignored: Jev's output is typed
-  # at the protocol level, so there is no JSON parsing to coerce.
-  def auto_categorize(transactions: [], user_categories: [], model: "", family: nil, json_mode: nil)
+  # at the protocol level, so there is no JSON parsing to coerce. `user` is
+  # ignored too, because Jev calls are not recorded as LLM usage.
+  def auto_categorize(transactions: [], user_categories: [], model: "", family: nil, user: nil, json_mode: nil)
     with_provider_response do
       if user_categories.blank?
         Rails.logger.error("Cannot auto-categorize transactions for family #{family&.id || 'unknown'}: no categories available")

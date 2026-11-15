@@ -1,4 +1,5 @@
 require "test_helper"
+require "ostruct"
 
 class PlaidItemTest < ActiveSupport::TestCase
   include SyncableInterfaceTest
@@ -216,5 +217,31 @@ class PlaidItemTest < ActiveSupport::TestCase
     @plaid_item.expects(:sync_later_with_follow_up).once
 
     @plaid_item.sync_later_with_provider_refresh
+  end
+
+  test "upsert_plaid_snapshot! records the item's usage for the month" do
+    snapshot = OpenStruct.new(available_products: [ "liabilities" ], billed_products: [ "transactions", "investments" ])
+
+    assert_difference "PlaidItemUsage.count", 1 do
+      @plaid_item.upsert_plaid_snapshot!(snapshot)
+    end
+
+    usage = PlaidItemUsage.find_by!(plaid_item_id: @plaid_item.id, period: PlaidItemUsage.current_period)
+    assert_equal %w[investments transactions], usage.billed_products.sort
+  end
+
+  test "upsert_plaid_snapshot! still saves when recording usage fails" do
+    snapshot = OpenStruct.new(available_products: [], billed_products: [ "transactions" ])
+    PlaidItemUsage.stubs(:record!).raises(ActiveRecord::StatementInvalid, "boom")
+
+    assert_difference "DebugLogEntry.count", 1 do
+      @plaid_item.upsert_plaid_snapshot!(snapshot)
+    end
+
+    assert_equal [ "transactions" ], @plaid_item.reload.billed_products
+    entry = DebugLogEntry.order(:created_at).last
+    assert_equal "plaid", entry.provider_key
+    assert_equal @plaid_item.family, entry.family
+    assert_equal "ActiveRecord::StatementInvalid", entry.metadata["error_class"]
   end
 end

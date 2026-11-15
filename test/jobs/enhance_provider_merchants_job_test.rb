@@ -26,6 +26,20 @@ class EnhanceProviderMerchantsJobTest < ActiveJob::TestCase
     assert_not Rails.cache.exist?(@key)
   end
 
+  test "passes the user who asked through every batch to the enhancer" do
+    user = users(:family_member)
+    ProviderMerchant::Enhancer.any_instance.stubs(:batches).returns([ [ "a" ] ])
+
+    assert_enqueued_with(job: EnhanceProviderMerchantsJob, args: [ @family, { merchant_ids: [ "a" ], user: user } ]) do
+      EnhanceProviderMerchantsJob.perform_now(@family, user: user)
+    end
+
+    enhancer = mock
+    enhancer.expects(:enhance)
+    ProviderMerchant::Enhancer.expects(:new).with(@family, merchant_ids: [ "a" ], user: user).returns(enhancer)
+    EnhanceProviderMerchantsJob.perform_now(@family, merchant_ids: [ "a" ], user: user)
+  end
+
   test "releases the lock when there is nothing to enhance" do
     ProviderMerchant::Enhancer.any_instance.stubs(:batches).returns([])
 

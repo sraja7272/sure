@@ -15,14 +15,15 @@ class Provider::Anthropic::PdfProcessor
   REQUEST_ENVELOPE_BYTES = 1 * 1024 * 1024
   MAX_PDF_BYTES = (MAX_REQUEST_BYTES - REQUEST_ENVELOPE_BYTES) * 3 / 4
 
-  attr_reader :client, :model, :pdf_content, :langfuse_trace, :family
+  attr_reader :client, :model, :pdf_content, :langfuse_trace, :family, :user
 
-  def initialize(client, model:, pdf_content:, langfuse_trace: nil, family: nil)
+  def initialize(client, model:, pdf_content:, langfuse_trace: nil, family: nil, user: nil)
     @client = client
     @model = model
     @pdf_content = pdf_content
     @langfuse_trace = langfuse_trace
     @family = family
+    @user = user
   end
 
   def process

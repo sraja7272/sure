@@ -32,7 +32,7 @@ module Provider::LlmConcept
     :category_name, :bill_type, :autopay, :confidence, :rationale
   )
 
-  def suggest_bill_setup(charges:, categories: [], current_config: nil, model: "", family: nil)
+  def suggest_bill_setup(charges:, categories: [], current_config: nil, model: "", family: nil, user: nil)
     raise NotImplementedError, "Subclasses must implement #suggest_bill_setup"
   end
 
@@ -42,7 +42,7 @@ module Provider::LlmConcept
     false
   end
 
-  def process_pdf(pdf_content:, family: nil)
+  def process_pdf(pdf_content:, family: nil, user: nil)
     raise NotImplementedError, "Provider does not support PDF processing"
   end
 

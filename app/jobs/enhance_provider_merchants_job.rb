@@ -10,19 +10,20 @@ class EnhanceProviderMerchantsJob < ApplicationJob
 
   # Without merchant_ids, queues one job per LLM call's worth of the family's
   # unenhanced merchants, like merchant detection. The lock then holds the
-  # number of those jobs, and the last one to finish releases it.
-  def perform(family, merchant_ids: nil)
+  # number of those jobs, and the last one to finish releases it. `user` is who
+  # the AI usage is charged to.
+  def perform(family, merchant_ids: nil, user: nil)
     key = self.class.lock_key(family)
 
     if merchant_ids
-      ProviderMerchant::Enhancer.new(family, merchant_ids: merchant_ids).enhance
+      ProviderMerchant::Enhancer.new(family, merchant_ids: merchant_ids, user: user).enhance
       Rails.cache.delete(key) if Rails.cache.decrement(key, 1, expires_in: LOCK_TTL).to_i <= 0
     else
       batches = ProviderMerchant::Enhancer.new(family).batches
       return Rails.cache.delete(key) if batches.empty?
 
       Rails.cache.write(key, batches.size, raw: true, expires_in: LOCK_TTL)
-      batches.each { |ids| self.class.perform_later(family, merchant_ids: ids) }
+      batches.each { |ids| self.class.perform_later(family, merchant_ids: ids, user: user) }
     end
   end
 end

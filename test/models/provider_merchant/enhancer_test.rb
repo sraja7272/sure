@@ -43,6 +43,18 @@ class ProviderMerchant::EnhancerTest < ActiveSupport::TestCase
     assert_nil second.reload.website_url
   end
 
+  test "enhance charges the given user" do
+    merchant = ProviderMerchant.create!(source: "lunchflow", name: "Shop", provider_merchant_id: "lf_shop")
+    create_transaction(account: @account, name: "Shop", merchant: merchant)
+    user = users(:family_member)
+
+    @llm_provider.expects(:enhance_provider_merchants)
+                 .with { |**kwargs| kwargs[:user] == user && kwargs[:family] == @family }
+                 .returns(provider_success_response([])).once
+
+    ProviderMerchant::Enhancer.new(@family, merchant_ids: [ merchant.id ], user: user).enhance
+  end
+
   test "enhances provider merchants with website and logo" do
     merchant = ProviderMerchant.create!(source: "lunchflow", name: "Walmart", provider_merchant_id: "lf_walmart")
     create_transaction(account: @account, name: "Walmart purchase", merchant: merchant)

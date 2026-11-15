@@ -1,0 +1,23 @@
+---
+en:
+  settings:
+    usage_costs:
+      show:
+        ai_title: AI by feature
+        cost: Cost
+        estimates_body: >-
+          Amounts are in USD and are estimates: AI cost comes from the published
+          pricing table and Plaid cost from the rates your administrator entered.
+          Usage is counted from the upgrade that added this page; earlier AI usage
+          is not attributed to anyone.
+        estimates_title: About these figures
+        feature: Feature
+        institution: Connection
+        no_usage: No AI or Plaid usage for you this month
+        page_title: My usage costs
+        plaid_title: Plaid connections
+        products: Billed products
+        refreshes: Refreshes
+        requests: Requests
+        subtitle: Estimated cost of the AI requests and Plaid connections charged to you
+        unnamed_institution: Unnamed connection

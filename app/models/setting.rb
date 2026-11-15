@@ -248,6 +248,15 @@ class Setting < RailsSettings::Base
   field :market_data_sync_time, type: :string, default: ENV.fetch("MARKET_DATA_SYNC_TIME", "22:00")
   field :market_data_sync_timezone, type: :string, default: ENV.fetch("MARKET_DATA_SYNC_TIMEZONE", "UTC")
 
+  # What the instance's Plaid contract charges, in USD: per item per month for
+  # each billed product (investments as holdings and investment transactions),
+  # and per /transactions/refresh call. See PlaidItemUsage.
+  field :plaid_rate_transactions, type: :big_decimal, default: 0
+  field :plaid_rate_investments_holdings, type: :big_decimal, default: 0
+  field :plaid_rate_investments_transactions, type: :big_decimal, default: 0
+  field :plaid_rate_liabilities, type: :big_decimal, default: 0
+  field :plaid_rate_transactions_refresh, type: :big_decimal, default: 0
+
   AUTO_SYNC_TIME_FORMAT = /\A([01]?\d|2[0-3]):([0-5]\d)\z/
 
   def self.valid_auto_sync_time?(time_str)

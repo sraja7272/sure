@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_11_080000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_14_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -1430,11 +1430,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_080000) do
     t.string "ticker_col_label"
     t.string "type", null: false
     t.datetime "updated_at", null: false
+    t.uuid "user_id"
     t.index ["account_statement_id"], name: "index_imports_on_account_statement_id"
     t.index ["family_id"], name: "index_imports_on_family_id"
     t.index ["import_session_id", "client_chunk_id"], name: "idx_imports_on_session_client_chunk", unique: true, where: "((import_session_id IS NOT NULL) AND (client_chunk_id IS NOT NULL))"
     t.index ["import_session_id", "sequence"], name: "idx_imports_on_session_sequence", unique: true, where: "((import_session_id IS NOT NULL) AND (sequence IS NOT NULL))"
     t.index ["import_session_id"], name: "index_imports_on_import_session_id"
+    t.index ["user_id"], name: "index_imports_on_user_id"
     t.check_constraint "checksum IS NULL OR length(checksum::text) = 64", name: "chk_imports_checksum_sha256_length"
     t.check_constraint "client_chunk_id IS NULL OR btrim(client_chunk_id::text) <> ''::text", name: "chk_imports_client_chunk_id_present"
     t.check_constraint "import_session_id IS NULL OR checksum IS NOT NULL", name: "chk_imports_session_checksum_present"
@@ -1608,9 +1610,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_080000) do
     t.string "provider", null: false
     t.integer "total_tokens", default: 0, null: false
     t.datetime "updated_at", null: false
+    t.uuid "user_id"
     t.index ["family_id", "created_at"], name: "index_llm_usages_on_family_id_and_created_at"
     t.index ["family_id", "operation"], name: "index_llm_usages_on_family_id_and_operation"
     t.index ["family_id"], name: "index_llm_usages_on_family_id"
+    t.index ["user_id", "created_at"], name: "index_llm_usages_on_user_id_and_created_at"
     t.check_constraint "cache_creation_tokens IS NULL OR cache_creation_tokens >= 0", name: "chk_llm_usages_cache_creation_tokens_non_negative"
     t.check_constraint "cache_read_tokens IS NULL OR cache_read_tokens >= 0", name: "chk_llm_usages_cache_read_tokens_non_negative"
   end
@@ -1962,6 +1966,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_080000) do
     t.datetime "updated_at", null: false
     t.index ["plaid_item_id", "plaid_id"], name: "index_plaid_accounts_on_item_and_plaid_id", unique: true
     t.index ["plaid_item_id"], name: "index_plaid_accounts_on_plaid_item_id"
+  end
+
+  create_table "plaid_item_usages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "billed_products", default: [], null: false, array: true
+    t.datetime "created_at", null: false
+    t.uuid "family_id", null: false
+    t.string "institution_name"
+    t.string "period", null: false
+    t.uuid "plaid_item_id", null: false
+    t.string "plaid_region", default: "us", null: false
+    t.integer "transactions_refresh_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id"
+    t.index ["family_id", "period"], name: "index_plaid_item_usages_on_family_id_and_period"
+    t.index ["plaid_item_id", "period"], name: "index_plaid_item_usages_on_plaid_item_id_and_period", unique: true
+    t.index ["user_id", "period"], name: "index_plaid_item_usages_on_user_id_and_period"
   end
 
   create_table "plaid_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -3228,6 +3248,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_080000) do
   add_foreign_key "imports", "account_statements", on_delete: :nullify
   add_foreign_key "imports", "families"
   add_foreign_key "imports", "import_sessions", column: ["import_session_id", "family_id"], primary_key: ["id", "family_id"], name: "fk_imports_session_family", on_delete: :cascade
+  add_foreign_key "imports", "users", on_delete: :nullify
   add_foreign_key "indexa_capital_accounts", "indexa_capital_items"
   add_foreign_key "indexa_capital_items", "families"
   add_foreign_key "insights", "families"
@@ -3236,6 +3257,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_080000) do
   add_foreign_key "kraken_accounts", "kraken_items"
   add_foreign_key "kraken_items", "families"
   add_foreign_key "llm_usages", "families"
+  add_foreign_key "llm_usages", "users", on_delete: :nullify
   add_foreign_key "lunchflow_accounts", "lunchflow_items"
   add_foreign_key "lunchflow_items", "families"
   add_foreign_key "merchants", "families"
@@ -3253,6 +3275,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_11_080000) do
   add_foreign_key "onchain_wallet_accounts", "onchain_wallet_items"
   add_foreign_key "onchain_wallet_items", "families"
   add_foreign_key "plaid_accounts", "plaid_items"
+  add_foreign_key "plaid_item_usages", "families", on_delete: :cascade
+  add_foreign_key "plaid_item_usages", "users", on_delete: :nullify
   add_foreign_key "plaid_items", "families"
   add_foreign_key "plaid_items", "users", column: "owner_id", on_delete: :nullify
   add_foreign_key "push_subscriptions", "users"

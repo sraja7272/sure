@@ -32,6 +32,19 @@ class Assistant::ResponderTest < ActiveSupport::TestCase
     assert_raises(IOError) { @responder.respond }
   end
 
+  test "charges the chat's user for the request" do
+    reply = Provider::LlmConcept::ChatResponse.new(
+      id: "1", model: "gpt-4.1",
+      messages: [ Provider::LlmConcept::ChatMessage.new(id: "1", output_text: "Hello") ],
+      function_requests: []
+    )
+    @llm.expects(:chat_response)
+        .with { |_prompt, **kwargs| kwargs[:user] == @chat.user && kwargs[:family] == @chat.user.family }
+        .returns(provider_success_response(reply))
+
+    @responder.respond
+  end
+
   test "group_by_round splits consecutive results by round and keeps untagged results together" do
     a = { call_id: "a", round: 1 }
     b = { call_id: "b", round: 2 }

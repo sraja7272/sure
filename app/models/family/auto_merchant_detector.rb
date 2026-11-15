@@ -16,11 +16,7 @@ class Family::AutoMerchantDetector
       Rails.logger.info("Auto-detecting merchants for #{scope.count} transactions for family #{family.id}")
     end
 
-    result = llm_provider.auto_detect_merchants(
-      transactions: transactions_input,
-      user_merchants: user_merchants_input,
-      family: family
-    )
+    result = auto_detect_merchants_by_owner
 
     unless result.success?
       Rails.logger.error("Failed to auto-detect merchants for family #{family.id}: #{result.error.message}")
@@ -69,6 +65,32 @@ class Family::AutoMerchantDetector
       Provider::Registry.preferred_llm_provider
     end
 
+    # One request per account owner, so each usage row is charged to the person
+    # whose accounts it covered. Stops at the first failure and returns it.
+    def auto_detect_merchants_by_owner
+      detections = []
+
+      transactions_by_owner.each do |owner, transactions|
+        response = llm_provider.auto_detect_merchants(
+          transactions: transactions_input(transactions),
+          user_merchants: user_merchants_input,
+          family: family,
+          user: owner
+        )
+        return response unless response.success?
+
+        detections.concat(response.data)
+      end
+
+      Provider::Response.new(success?: true, data: detections, error: nil)
+    end
+
+    def transactions_by_owner
+      groups = scope.includes(entry: :account).group_by { |transaction| transaction.entry.account.owner_id }
+      owners = User.where(id: groups.keys.compact).index_by(&:id)
+      groups.transform_keys { |owner_id| owners[owner_id] }
+    end
+
     def user_merchants_input
       family.merchants.map do |merchant|
         {
@@ -78,8 +100,8 @@ class Family::AutoMerchantDetector
       end
     end
 
-    def transactions_input
-      scope.map do |transaction|
+    def transactions_input(transactions)
+      transactions.map do |transaction|
         {
           id: transaction.id,
           amount: transaction.entry.amount.abs,

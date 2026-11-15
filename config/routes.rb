@@ -453,6 +453,7 @@ Rails.application.routes.draw do
       patch :apply_best
     end
     resource :llm_usage, only: :show
+    resource :usage_costs, only: :show
     resource :guides, only: :show
     get "bank_sync", to: redirect("/settings/providers", status: 301)
     resource :providers, only: %i[show update] do
@@ -1099,6 +1100,7 @@ Rails.application.routes.draw do
     end
     resources :sso_identity_blocks, only: [ :destroy ]
     resources :invitations, only: [ :destroy ]
+    resource :usage_costs, only: %i[show update]
     resources :families, only: [ :destroy ] do
       member do
         delete :invitations, to: "invitations#destroy_all"

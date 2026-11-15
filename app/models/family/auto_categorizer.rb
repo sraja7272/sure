@@ -41,11 +41,7 @@ class Family::AutoCategorizer
       raise Error, "No categories available for auto-categorization"
     end
 
-    result = categorization_provider.auto_categorize(
-      transactions: transactions_input,
-      user_categories: categories_input,
-      family: family
-    )
+    result = auto_categorize_by_owner(categorization_provider, categories_input)
 
     unless result.success?
       raise Error, "Failed to auto-categorize transactions: #{result.error.message}"
@@ -188,11 +184,7 @@ class Family::AutoCategorizer
       end
       return nil if provider.nil? || provider.class == categorization_provider.class
 
-      response = provider.auto_categorize(
-        transactions: transactions_input,
-        user_categories: categories_input,
-        family: family
-      )
+      response = auto_categorize_by_owner(provider, categories_input)
 
       return nil unless response.success?
 
@@ -239,6 +231,33 @@ class Family::AutoCategorizer
       Rails.logger.warn("Recording shadow comparison failed for family #{family.id}: #{error.class}: #{error.message}")
     end
 
+    # One request per account owner, so each usage row is charged to the person
+    # whose accounts it covered. Stops at the first failure and returns it, so
+    # the run fails as a whole the way a single request would.
+    def auto_categorize_by_owner(provider, categories_input)
+      decisions = []
+
+      transactions_by_owner.each do |owner, transactions|
+        response = provider.auto_categorize(
+          transactions: transactions_input(transactions),
+          user_categories: categories_input,
+          family: family,
+          user: owner
+        )
+        return response unless response.success?
+
+        decisions.concat(response.data)
+      end
+
+      Provider::Response.new(success?: true, data: decisions, error: nil)
+    end
+
+    def transactions_by_owner
+      groups = scope.includes(entry: :account).group_by { |transaction| transaction.entry.account.owner_id }
+      owners = User.where(id: groups.keys.compact).index_by(&:id)
+      groups.transform_keys { |owner_id| owners[owner_id] }
+    end
+
     def provider_key(provider)
       provider.class.name.demodulize.underscore
     end
@@ -254,8 +273,8 @@ class Family::AutoCategorizer
       end
     end
 
-    def transactions_input
-      scope.map do |transaction|
+    def transactions_input(transactions)
+      transactions.map do |transaction|
         {
           id: transaction.id,
           amount: transaction.entry.amount.abs,
