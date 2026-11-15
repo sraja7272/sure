@@ -5,10 +5,9 @@
 # (`opus`, `sonnet`, `haiku`, `fable` for Fable 5.2, or a full model id); the
 # default is `opus`.
 #
-# Runs bill Anthropic API credits through workload identity federation, set
-# up in Claude Console under Keys > Workload identity. The ANTHROPIC_* repo
-# variables (federation rule, organization, service account, workspace) point
-# at that federation rule.
+# Runs authenticate with a Claude API key stored in the ANTHROPIC_API_KEY repo
+# secret. The key is created in Claude Console, and runs bill the workspace
+# that key belongs to.
 #
 # Reviews do not run the tests themselves (that would run PR code next to the
 # API credentials); they read the results of the CI workflow instead.
@@ -42,7 +41,7 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-      id-token: write # OIDC token for the Claude API login and the GitHub App token
+      id-token: write # OIDC token the action exchanges for its GitHub App token
       actions: read # with additional_permissions below, lets Claude read CI results
     steps:
       # The action fetches the PR branch itself (depth = PR commit count, min 20),
@@ -66,13 +65,9 @@ jobs:
 
       - uses: anthropics/claude-code-action@58985842b834ed26087302ba27d07bc24ca8697a # v1.0.240 (v1)
         with:
-          # Workload identity federation: the action trades this job's GitHub
-          # OIDC token (hence `id-token: write`) for a short-lived Claude API
-          # token, so no API key is stored in the repo.
-          anthropic_federation_rule_id: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID }}
-          anthropic_organization_id: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
-          anthropic_service_account_id: ${{ vars.ANTHROPIC_SERVICE_ACCOUNT_ID }}
-          anthropic_workspace_id: ${{ vars.ANTHROPIC_WORKSPACE_ID }}
+          # Claude API key from the ANTHROPIC_API_KEY repo secret, created in
+          # Claude Console; runs bill that key's workspace.
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # The job's `actions: read` grant alone is not enough: the action adds
           # its CI tools (get_ci_status, get_workflow_run_details,
           # download_job_log) only when this input asks for it.
