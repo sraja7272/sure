@@ -342,6 +342,26 @@ class Settings::ProvidersControllerTest < ActionDispatch::IntegrationTest
     Setting.enabled_connectors = nil
   end
 
+  test "switched-off Sophtron, Trading 212 and Trade Republic panels offer no create form" do
+    family = families(:dylan_family)
+    family.sophtron_items.create!(name: "Sophtron", user_id: "user", access_key: "key")
+    family.trading212_items.create!(name: "Trading 212", api_key: "key", api_secret: "secret")
+    family.trade_republic_items.create!(name: "Trade Republic", phone_number: "+4915112345678")
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[sophtron trading212 trade_republic])
+
+    { "sophtron" => sophtron_items_path, "trading212" => trading212_items_path,
+      "trade_republic" => trade_republic_items_path }.each do |key, create_path|
+      get connect_form_settings_providers_url(provider_key: key)
+      assert_response :success
+      assert_select "form[action=?]", create_path, { count: 0 }, "#{key} still offers a create form"
+    end
+
+    get connect_form_settings_providers_url(provider_key: "sophtron")
+    assert_includes response.body, I18n.t("connectors.disabled")
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
   test "a switched-off connector stays listed for a family that has a connection through it" do
     Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[wise])
 
