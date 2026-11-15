@@ -2,6 +2,10 @@
   <%
     sf_link = link_to("SimpleFIN Bridge", "https://beta-bridge.simplefin.org", target: "_blank", rel: "noopener noreferrer", class: "text-link underline")
   %>
+  <% unless connector_enabled?("simplefin") %>
+    <%= render DS::Alert.new(message: t("connectors.disabled"), variant: :info) %>
+  <% end %>
+
   <% if connector_enabled?("simplefin") %>
     <%= render "settings/providers/setup_steps",
                steps: [

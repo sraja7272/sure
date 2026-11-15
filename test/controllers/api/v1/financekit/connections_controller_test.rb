@@ -213,6 +213,33 @@ class Api::V1::Financekit::ConnectionsControllerTest < ActionDispatch::Integrati
     Setting.enabled_connectors = nil
   end
 
+  test "replacing a live FinanceKit connection still works while it is switched off" do
+    @item.update!(status: "repair_required")
+    Provider::ConnectorAvailability.update!(%w[plaid])
+    replacement = @enrollment.merge("enrollment_id" => SecureRandom.uuid, "replaces_connection_id" => @item.id)
+
+    assert_difference "FinancekitItem.count", 1 do
+      post "/api/v1/financekit/connections", params: replacement, headers: @headers, as: :json
+    end
+    assert_response :created
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
+  test "replacing a revoked FinanceKit connection is refused while it is switched off" do
+    @item.update!(status: "revoked")
+    Provider::ConnectorAvailability.update!(%w[plaid])
+    replacement = @enrollment.merge("enrollment_id" => SecureRandom.uuid, "replaces_connection_id" => @item.id)
+
+    assert_no_difference "FinancekitItem.count" do
+      post "/api/v1/financekit/connections", params: replacement, headers: @headers, as: :json
+    end
+    assert_response :forbidden
+    assert_equal "connector_disabled", response.parsed_body.fetch("error")
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
   test "non-admin and foreign-family access is rejected" do
     # Admin is the only thing standing between a family member and the publisher
     # endpoints now, so this is the whole access check rather than one of three.

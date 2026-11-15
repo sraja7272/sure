@@ -315,6 +315,33 @@ class Settings::ProvidersControllerTest < ActionDispatch::IntegrationTest
     Setting.enabled_connectors = nil
   end
 
+  test "a switched-off SimpleFIN drawer explains why it offers no setup" do
+    SimplefinItem.create!(family: families(:dylan_family), name: "Existing", access_url: "https://example.com/access")
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[simplefin])
+
+    get connect_form_settings_providers_url(provider_key: "simplefin")
+
+    assert_response :success
+    assert_includes response.body, I18n.t("connectors.disabled")
+    assert_not_includes response.body, I18n.t("settings.providers.simplefin_panel.step_2")
+    assert_select "form[action=?]", simplefin_items_path, count: 0
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
+  test "a switched-off IBKR panel drops the add-connection heading and form" do
+    families(:dylan_family).ibkr_items.create!(name: "IBKR", query_id: "q1", token: "t1")
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[ibkr])
+
+    get connect_form_settings_providers_url(provider_key: "ibkr")
+
+    assert_response :success
+    assert_not_includes response.body, I18n.t("settings.providers.ibkr_panel.add_connection")
+    assert_select "form[action=?]", ibkr_items_path, count: 0
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
   test "a switched-off connector stays listed for a family that has a connection through it" do
     Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[wise])
 

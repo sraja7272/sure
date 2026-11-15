@@ -167,6 +167,21 @@ class ConnectorGatedTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
+  test "the accounts page hides Reconnect on an unfinished SnapTrade item while it is off" do
+    ensure_tailwind_build
+    sign_in users(:empty)
+    # Reconnect points at the OAuth or device flow depending on configuration;
+    # either way it carries the item id in its query string.
+    reconnect = "item_id=#{snaptrade_items(:unauthorized_item).id}"
+
+    get accounts_path
+    assert_includes response.body, reconnect
+
+    Provider::ConnectorAvailability.update!(%w[plaid])
+    get accounts_path
+    assert_not_includes response.body, reconnect
+  end
+
   test "brex account flows are refused when brex is off" do
     Provider::ConnectorAvailability.update!(%w[plaid])
 
