@@ -38,6 +38,20 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_session_path
   end
 
+  test "demo hosts keep password sign-up when SSO auto-redirect is on" do
+    stub_sso_auto_redirect
+    host! "demo.sure.am"
+
+    get new_registration_url
+    assert_response :success
+
+    assert_difference "User.count", +1 do
+      post registration_url, params: { user: {
+        email: "demo-signup@example.com",
+        password: "Password1!" } }
+    end
+  end
+
   test "create redirects to correct URL" do
     post registration_url, params: { user: {
       email: "john@example.com",

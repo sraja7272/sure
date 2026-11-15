@@ -1,4 +1,6 @@
 class RegistrationsController < ApplicationController
+  include SsoAutoRedirectable
+
   skip_authentication
 
   layout "auth"
@@ -121,7 +123,7 @@ class RegistrationsController < ApplicationController
     # With SSO auto-redirect on, accounts are created by the provider sign-in
     # flow, so password sign-up is not offered.
     def redirect_to_sso_sign_in
-      return unless AuthConfig.auto_redirect_provider
+      return unless sso_auto_redirect_provider
 
       flash.keep
       redirect_to new_session_path

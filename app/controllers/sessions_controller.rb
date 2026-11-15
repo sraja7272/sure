@@ -1,5 +1,6 @@
 class SessionsController < ApplicationController
   extend SslConfigurable
+  include SsoAutoRedirectable
 
   before_action :set_session, only: :destroy
   skip_authentication only: %i[index new create openid_connect failure post_logout mobile_sso_start desktop_sso_start desktop_exchange]
@@ -551,8 +552,8 @@ class SessionsController < ApplicationController
     # looping. OmniAuth only accepts a CSRF-protected POST, hence the
     # auto-submitting form rather than a redirect.
     def start_sso_auto_redirect
-      provider = AuthConfig.auto_redirect_provider
-      return if provider.nil? || flash[:alert].present? || @prefill_demo_credentials
+      provider = sso_auto_redirect_provider
+      return if provider.nil? || flash[:alert].present?
 
       flash.keep
       @provider = provider[:name].to_s

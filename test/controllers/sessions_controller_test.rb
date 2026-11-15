@@ -351,8 +351,20 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "form#sso_form[action=?][method=post]", "/auth/openid_connect" do
       assert_select "input[name=authenticity_token]"
+      assert_select "noscript button[type=submit]"
     end
     assert_select "input[type=password]", count: 0
+  end
+
+  test "demo hosts keep the sign-in page when SSO auto-redirect is on" do
+    stub_sso_auto_redirect
+    host! "demo.sure.am"
+
+    get new_session_path
+
+    assert_response :success
+    assert_select "form#sso_form", count: 0
+    assert_select "a[href=?]", new_registration_path
   end
 
   test "sign-in page renders normally when SSO auto-redirect has no single provider" do
