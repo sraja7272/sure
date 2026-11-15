@@ -1293,8 +1293,11 @@ Sure records which person each AI request and Plaid connection is charged to:
 - **Plaid** has a monthly ledger with one row per connection per month. A row
   lists the products Plaid billed for that connection and how many transactions
   refresh calls it made, and is kept after the connection is deleted. Each row
-  is charged to the connection's owner. Plaid does not report prices through its
-  API, so a super admin enters the contract's USD rates, five in all:
+  is charged to the connection's owner when Sure last recorded it that month
+  (on connecting, each sync and removal), so a change of owner mid-month moves
+  that whole month to the new owner. Plaid does not report prices through its
+  API, so a super admin enters the contract's USD rates, five in all, and the
+  same rates apply to US and EU connections:
   - Transactions, per connection per month
   - Transactions refresh, per successful call
   - Investments holdings, per connection per month

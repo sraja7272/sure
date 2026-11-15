@@ -1,6 +1,7 @@
 ---
 en:
   usage_costs:
+    less_than: "<%{amount}"
     month_nav:
       month: Month
       next: Next month
