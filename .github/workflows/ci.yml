@@ -105,6 +105,10 @@ jobs:
       - name: Lint/Format js code
         run: npm run lint
 
+      # Quoted so Node expands the glob; a bare directory argument fails.
+      - name: JavaScript unit tests
+        run: node --test 'test/javascript/**/*.mjs'
+
   # The unit tests already use every CPU of a runner, so they are split by
   # file across two runners.
   test_unit_shard:

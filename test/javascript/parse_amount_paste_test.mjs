@@ -221,6 +221,43 @@ describe("parseAmountPaste", () => {
     })
   })
 
+  describe("parses a leading decimal separator", () => {
+    it('parses ".12" and ",12" as 0.12', () => {
+      assert.equal(parseAmountPaste(".12"), 0.12)
+      assert.equal(parseAmountPaste(",12"), 0.12)
+    })
+
+    it('parses "$.12" and ".12 €" as 0.12', () => {
+      assert.equal(parseAmountPaste("$.12"), 0.12)
+      assert.equal(parseAmountPaste(".12 €"), 0.12)
+    })
+
+    it('parses "-.5", "-$.5", "$-.5" and "(.50)" as -0.5', () => {
+      assert.equal(parseAmountPaste("-.5"), -0.5)
+      assert.equal(parseAmountPaste("-$.5"), -0.5)
+      assert.equal(parseAmountPaste("$-.5"), -0.5)
+      assert.equal(parseAmountPaste("(.50)"), -0.5)
+    })
+
+    it('reads ".123" and ",123" as decimals, since a leading separator cannot group digits', () => {
+      assert.equal(parseAmountPaste(",123"), 0.123)
+      assert.equal(parseAmountPaste(".123", { separator: "," }), 0.123)
+      assert.equal(parseAmountPaste(",123", { separator: "." }), 0.123)
+    })
+
+    it('rejects a bare separator: ".", ",", "$." and "-."', () => {
+      assert.equal(parseAmountPaste("."), null)
+      assert.equal(parseAmountPaste(","), null)
+      assert.equal(parseAmountPaste("$."), null)
+      assert.equal(parseAmountPaste("-."), null)
+    })
+
+    it('rejects a second separator after a leading one: ".1.2", ",1,234"', () => {
+      assert.equal(parseAmountPaste(".1.2"), null)
+      assert.equal(parseAmountPaste(",1,234"), null)
+    })
+  })
+
   describe("rejects multi-cell pastes rather than joining them", () => {
     it('rejects "100\\t200"', () => {
       assert.equal(parseAmountPaste("100\t200"), null)

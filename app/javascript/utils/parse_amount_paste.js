@@ -11,8 +11,14 @@ const CURRENCY_SYMBOL = "[$£¥֏؋৳฿៛₡₦₨₩₪₫€₭₮₱₲₴
 // Only the spaces that locales actually use to group digits ("1 234,56") are
 // allowed inside the number. Any other whitespace is a token boundary, not a
 // separator, so a multi-cell spreadsheet paste ("100\t200") is rejected rather
-// than concatenated into one amount.
-const GROUPED_NUMBER = /^([+-]?)(\d[\d.,\u0020\u00a0\u202f]*)$/
+// than concatenated into one amount. A number may also open with a single
+// separator followed only by digits (".12", ",5").
+const GROUPED_NUMBER = /^([+-]?)(\d[\d.,\u0020\u00a0\u202f]*|[.,]\d+)$/
+
+// A separator with no digit before it cannot be grouping digits, so it is the
+// decimal point whatever the currency's separator. It bypasses
+// parseLocaleFloat, whose heuristic and hints would read ",123" as 123.
+const LEADING_SEPARATOR = /^[.,]/
 
 // A single separator followed by exactly three digits ("1,234", "1.234") is
 // the one shape that reads both ways: a thousands group or three decimals. Any
@@ -69,10 +75,12 @@ export default function parseAmountPaste(text, options = {}) {
   if (match[1] === "-") negative = true
 
   const { separator } = options
-  const parsed = parseLocaleFloat(
-    match[2],
-    AMBIGUOUS_SEPARATOR.test(match[2]) ? { separator } : {},
-  )
+  const parsed = LEADING_SEPARATOR.test(match[2])
+    ? Number.parseFloat(`0.${match[2].slice(1)}`)
+    : parseLocaleFloat(
+        match[2],
+        AMBIGUOUS_SEPARATOR.test(match[2]) ? { separator } : {},
+      )
   if (!Number.isFinite(parsed)) return null
 
   return negative ? -Math.abs(parsed) : parsed
