@@ -2,7 +2,8 @@
 #
 # Mention @claude in a PR comment, an inline review comment, or a submitted
 # review and Claude answers on the PR. Add `model=<name>` to pick the model
-# (`opus`, `sonnet`, `haiku`, or a full model id); the default is `opus`.
+# (`opus`, `sonnet`, `haiku`, `fable` for Fable 5.2, or a full model id); the
+# default is `opus`.
 #
 # Runs bill Anthropic API credits through workload identity federation, set
 # up in Claude Console under Keys > Workload identity. The ANTHROPIC_* repo
@@ -59,6 +60,8 @@ jobs:
           BODY: ${{ github.event.comment.body || github.event.review.body }}
         run: |
           MODEL=$(printf '%s' "$BODY" | grep -oiP 'model=\K[a-z0-9][a-z0-9.-]*' | head -n1 | tr '[:upper:]' '[:lower:]' || true)
+          # The CLI's own `fable` alias points at an older model, so pin the current id.
+          if [ "$MODEL" = "fable" ]; then MODEL=claude-fable-5-2; fi
           echo "name=${MODEL:-opus}" >> "$GITHUB_OUTPUT"
 
       - uses: anthropics/claude-code-action@58985842b834ed26087302ba27d07bc24ca8697a # v1.0.240 (v1)
@@ -75,6 +78,10 @@ jobs:
           # download_job_log) only when this input asks for it.
           additional_permissions: |
             actions: read
+          # Prints Claude's full output, tool results included, into the Actions
+          # log to diagnose failed runs. Anyone who can see this repo's Actions
+          # can read those logs, so turn it off once the failure is understood.
+          show_full_output: true
           claude_args: >-
             --model ${{ steps.model.outputs.name }}
             --append-system-prompt "Before reviewing a pull request, check the CI results for its head commit with the github_ci tools. Start the review with one line giving the CI gate result and any failing job. Quote failing test names from the job log; do not guess."
