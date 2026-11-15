@@ -59,13 +59,16 @@
         <% if Current.user&.admin? %>
           <div class="flex items-center gap-2">
             <% if snaptrade_item.requires_update? || !snaptrade_registered %>
-              <%= render DS::Link.new(
-                text: t(".reconnect"),
-                icon: "link",
-                variant: "secondary",
-                href: reconnect_href,
-                frame: snaptrade_authorize_frame
-              ) %>
+              <%# An unfinished item isn't a connection to repair while SnapTrade is off. %>
+              <% if connector_enabled?("snaptrade") || snaptrade_item.existing_connection? %>
+                <%= render DS::Link.new(
+                  text: t(".reconnect"),
+                  icon: "link",
+                  variant: "secondary",
+                  href: reconnect_href,
+                  frame: snaptrade_authorize_frame
+                ) %>
+              <% end %>
             <% else %>
               <%= icon(
                 "refresh-cw",

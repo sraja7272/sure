@@ -2,12 +2,14 @@
   <%
     sf_link = link_to("SimpleFIN Bridge", "https://beta-bridge.simplefin.org", target: "_blank", rel: "noopener noreferrer", class: "text-link underline")
   %>
-  <%= render "settings/providers/setup_steps",
-             steps: [
-               t("settings.providers.simplefin_panel.step_1_html", link: sf_link),
-               t("settings.providers.simplefin_panel.step_2"),
-               t("settings.providers.simplefin_panel.step_3")
-             ] %>
+  <% if connector_enabled?("simplefin") %>
+    <%= render "settings/providers/setup_steps",
+               steps: [
+                 t("settings.providers.simplefin_panel.step_1_html", link: sf_link),
+                 t("settings.providers.simplefin_panel.step_2"),
+                 t("settings.providers.simplefin_panel.step_3")
+               ] %>
+  <% end %>
 
   <% error_msg = local_assigns[:error_message] || @error_message %>
   <% if error_msg.present? %>

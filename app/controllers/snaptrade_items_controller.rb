@@ -511,6 +511,8 @@ class SnaptradeItemsController < ApplicationController
     # request would authorize, so an unfinished item can't ride on another
     # item's connection.
     def snaptrade_connection_allowed?
+      return true if Provider::ConnectorAvailability.enabled?("snaptrade")
+
       item = if params[:item_id].present?
         Current.family.snaptrade_items.find_by(id: params[:item_id])
       else
@@ -521,7 +523,6 @@ class SnaptradeItemsController < ApplicationController
       require_connector_enabled!("snaptrade")
       !performed?
     end
-
 
     def set_snaptrade_item
       @snaptrade_item = Current.family.snaptrade_items.find(params[:id])

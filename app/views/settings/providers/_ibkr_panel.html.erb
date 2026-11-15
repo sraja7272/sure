@@ -169,7 +169,9 @@
       <% end %>
     </div>
 
-    <%= render "settings/providers/add_connection_heading", label: t(".add_connection") %>
+    <% if connector_enabled?("ibkr") %>
+      <%= render "settings/providers/add_connection_heading", label: t(".add_connection") %>
+    <% end %>
   <% end %>
 
   <% if connector_enabled?("ibkr") %>

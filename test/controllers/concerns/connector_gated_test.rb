@@ -139,9 +139,11 @@ class ConnectorGatedTest < ActionDispatch::IntegrationTest
     Provider::ConnectorAvailability.update!(%w[plaid])
 
     get oauth_authorize_snaptrade_items_path(item_id: unfinished.id)
+    assert_redirected_to accounts_path
     assert_equal I18n.t("connectors.disabled"), flash[:alert]
 
     post start_oauth_device_flow_snaptrade_items_path(item_id: unfinished.id)
+    assert_redirected_to accounts_path
     assert_equal I18n.t("connectors.disabled"), flash[:alert]
   end
 
@@ -155,8 +157,14 @@ class ConnectorGatedTest < ActionDispatch::IntegrationTest
     Provider::ConnectorAvailability.update!(%w[plaid])
 
     get oauth_authorize_snaptrade_items_path(item_id: legacy.id)
-
     assert_redirected_to "https://snaptrade.example/authorize"
+
+    # The device flow gets past the switch too; the stubbed provider error
+    # proves the action ran rather than being refused.
+    Provider::Snaptrade.stubs(:oauth_configured?).returns(true)
+    SnaptradeItem.any_instance.stubs(:start_oauth_device_flow).raises(Provider::Snaptrade::Error.new("unavailable"))
+    post start_oauth_device_flow_snaptrade_items_path(item_id: legacy.id)
+    assert_response :unprocessable_entity
   end
 
   test "brex account flows are refused when brex is off" do
