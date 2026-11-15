@@ -191,11 +191,21 @@ class PlaidItemUsageTest < ActiveSupport::TestCase
     )
   end
 
+  test "update_rates accepts a rate typed without its leading zero" do
+    assert PlaidItemUsage.update_rates(
+      transactions: ".30", transactions_refresh: " .12 ",
+      investments_holdings: "0.18", investments_transactions: "0.07", liabilities: "0.20"
+    )
+
+    assert_equal BigDecimal("0.30"), PlaidItemUsage.rates[:transactions]
+    assert_equal BigDecimal("0.12"), PlaidItemUsage.rates[:transactions_refresh]
+  end
+
   test "update_rates saves nothing when any rate is missing, negative or not a number" do
     valid = { transactions: "0.30", transactions_refresh: "0.12", investments_holdings: "0.18", investments_transactions: "0.07", liabilities: "0.20" }
 
     [ { investments_holdings: "-0.01" }, { investments_holdings: "abc" }, { investments_transactions: "" },
-      { investments_transactions: "Infinity" }, { investments_transactions: nil } ].each do |bad|
+      { investments_transactions: "Infinity" }, { investments_transactions: nil }, { liabilities: "." } ].each do |bad|
       assert_not PlaidItemUsage.update_rates(valid.merge(bad))
       assert_equal 0, Setting.plaid_rate_transactions.to_d
     end

@@ -125,6 +125,20 @@ class TradesTest < ApplicationSystemTestCase
     assert_eventually { trade.reload.fee.to_d == 2.5.to_d }
   end
 
+  test "auto-saves an amount typed without its leading zero" do
+    entry = entries(:trade)
+    trade = entry.trade
+
+    visit trade_path(entry)
+
+    within "turbo-frame#drawer" do
+      fill_in "Transaction fee", with: ".5"
+      find_field("Transaction fee").send_keys(:tab)
+    end
+
+    assert_eventually { trade.reload.fee.to_d == 0.5.to_d }
+  end
+
   private
     def assert_eventually(timeout: Capybara.default_max_wait_time)
       deadline = Time.current + timeout
