@@ -33,7 +33,7 @@ jobs:
     #    The two review events only ever come from pull requests.
     # 3. The comment or review mentions @claude.
     if: >-
-      contains(fromJSON('["sraja7272"]'), github.actor) &&
+      contains(fromJSON('["sraja7272", "TIbrahim99"]'), github.actor) &&
       (github.event_name != 'issue_comment' || github.event.issue.pull_request) &&
       contains(github.event.comment.body || github.event.review.body, '@claude')
     runs-on: ubuntu-latest
