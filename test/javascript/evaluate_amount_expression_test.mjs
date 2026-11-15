@@ -46,6 +46,18 @@ describe("evaluateAmountExpression", () => {
       assert.equal(evaluateAmountExpression("12."), 12)
       assert.equal(evaluateAmountExpression("12,"), 12)
     })
+
+    it("parses a leading separator with no digits before it", () => {
+      assert.equal(evaluateAmountExpression(".12"), 0.12)
+      assert.equal(evaluateAmountExpression(",12"), 0.12)
+      assert.equal(evaluateAmountExpression("-.5"), -0.5)
+      assert.equal(evaluateAmountExpression("+.5"), 0.5)
+    })
+
+    it("parses a leading-separator operand inside an expression", () => {
+      assert.equal(evaluateAmountExpression("1+.5"), 1.5)
+      assert.equal(evaluateAmountExpression("2*-.5"), -1)
+    })
   })
 
   describe("a single separator is always the decimal point (iOS bug report)", () => {
@@ -133,9 +145,17 @@ describe("evaluateAmountExpression", () => {
       assert.equal(evaluateAmountExpression("12,50,00"), null)
     })
 
-    it("rejects a separator with nothing before it", () => {
+    it("rejects a separator with no digits on either side", () => {
       assert.equal(evaluateAmountExpression(","), null)
       assert.equal(evaluateAmountExpression("."), null)
+      assert.equal(evaluateAmountExpression("-."), null)
+      assert.equal(evaluateAmountExpression("1+."), null)
+    })
+
+    it("rejects a second separator after a leading one", () => {
+      assert.equal(evaluateAmountExpression(".1.2"), null)
+      assert.equal(evaluateAmountExpression(",1,2"), null)
+      assert.equal(evaluateAmountExpression(".1,2"), null)
     })
   })
 
@@ -396,6 +416,11 @@ describe("evaluateAmountExpression", () => {
       assert.equal(evaluateAmountExpression("1,,234", { separator: "," }), null)
     })
 
+    it("applies the hint to a leading separator", () => {
+      assert.equal(evaluateAmountExpression(",12", { separator: "," }), 0.12)
+      assert.equal(evaluateAmountExpression(",12", { separator: "." }), null)
+    })
+
     it("plain integers are unaffected by the hint", () => {
       assert.equal(evaluateAmountExpression("1234", { separator: "," }), 1234)
       assert.equal(evaluateAmountExpression("1234", { separator: "." }), 1234)
@@ -439,6 +464,11 @@ describe("formatAmountForDisplay", () => {
     it("never falls back to exponential notation for a very small amount", () => {
       const formatted = formatAmountForDisplay(0.0000000001, null, "0.0000000001")
       assert.ok(!formatted.includes("e"), `expected no exponential notation, got ${formatted}`)
+    })
+
+    it("adds the leading zero a leading-separator amount was typed without", () => {
+      assert.equal(formatAmountForDisplay(0.12, null, ".12"), "0.12")
+      assert.equal(formatAmountForDisplay(0.12, null, ",12"), "0,12")
     })
 
     it("renders a whole number without a trailing decimal point", () => {

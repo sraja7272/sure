@@ -3,12 +3,13 @@
 // is unambiguous.
 const OPERATOR = /[+\-*/]/
 
-// A valid number token: an optional sign, then a digit, then any run of
-// digits/dot/comma. Anything else (letters, an empty token, a bare sign) is
-// not a number, so the whole input is rejected rather than silently parsed
-// to 0. This is a coarse character-class check only — parseTypedNumber below
-// still validates that at most one separator is present.
-const NUMBER = /^[+-]?\d[\d.,]*$/
+// A valid number token: an optional sign, then a digit (or a separator and a
+// digit, as in ".12"), then any run of digits/dot/comma. Anything else
+// (letters, an empty token, a bare sign or separator) is not a number, so the
+// whole input is rejected rather than silently parsed to 0. This is a coarse
+// character-class check only — parseTypedNumber below still validates that at
+// most one separator is present.
+const NUMBER = /^[+-]?[.,]?\d[\d.,]*$/
 
 // A sane upper bound on how long a single number token can be. Nothing
 // resembling a real amount needs more than this; without a cap a
@@ -65,7 +66,8 @@ function parseTypedNumber(token, { separator } = {}) {
     const decimalChar = separators[0]
     if (separator && decimalChar !== separator) return null
 
-    const shape = decimalChar === "." ? /^\d+\.\d*$/ : /^\d+,\d*$/
+    // Digits on at least one side: "12." and ".12" are amounts, "." is not.
+    const shape = decimalChar === "." ? /^(?:\d+\.\d*|\.\d+)$/ : /^(?:\d+,\d*|,\d+)$/
     if (!shape.test(unsigned)) return null
 
     normalized = unsigned.replace(decimalChar, ".")
