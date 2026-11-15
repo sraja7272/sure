@@ -92,33 +92,35 @@
   <% end %>
 
   <% mercury_item = Current.family.mercury_items.build(name: t("mercury_items.provider_panel.default_connection_name")) %>
-  <% if active_items.any? %>
-    <%= render "settings/providers/add_connection_heading", label: t("mercury_items.provider_panel.add_connection") %>
-  <% end %>
-  <%= styled_form_with model: mercury_item,
-                       url: mercury_items_path,
-                       scope: :mercury_item,
-                       method: :post,
-                       data: { turbo: true },
-                       class: "space-y-3" do |form| %>
-    <%= form.text_field :name,
-                        label: t("mercury_items.provider_panel.connection_name_label"),
-                        placeholder: t("mercury_items.provider_panel.connection_name_placeholder") %>
+  <% if connector_enabled?("mercury") %>
+    <% if active_items.any? %>
+      <%= render "settings/providers/add_connection_heading", label: t("mercury_items.provider_panel.add_connection") %>
+    <% end %>
+    <%= styled_form_with model: mercury_item,
+                         url: mercury_items_path,
+                         scope: :mercury_item,
+                         method: :post,
+                         data: { turbo: true },
+                         class: "space-y-3" do |form| %>
+      <%= form.text_field :name,
+                          label: t("mercury_items.provider_panel.connection_name_label"),
+                          placeholder: t("mercury_items.provider_panel.connection_name_placeholder") %>
 
-    <%= form.text_field :token,
-                        label: t("mercury_items.provider_panel.token_label"),
-                        placeholder: t("mercury_items.provider_panel.token_placeholder"),
-                        type: :password,
-                        value: nil %>
+      <%= form.text_field :token,
+                          label: t("mercury_items.provider_panel.token_label"),
+                          placeholder: t("mercury_items.provider_panel.token_placeholder"),
+                          type: :password,
+                          value: nil %>
 
-    <%= form.text_field :base_url,
-                        label: t("mercury_items.provider_panel.base_url_label"),
-                        placeholder: t("mercury_items.provider_panel.base_url_placeholder") %>
-    <p class="text-xs text-secondary px-1 -mt-1"><%= t("mercury_items.provider_panel.sandbox_note_html").html_safe %></p>
+      <%= form.text_field :base_url,
+                          label: t("mercury_items.provider_panel.base_url_label"),
+                          placeholder: t("mercury_items.provider_panel.base_url_placeholder") %>
+      <p class="text-xs text-secondary px-1 -mt-1"><%= t("mercury_items.provider_panel.sandbox_note_html").html_safe %></p>
 
-    <div class="flex justify-end">
-      <%= form.submit t("mercury_items.provider_panel.add_connection") %>
-    </div>
+      <div class="flex justify-end">
+        <%= form.submit t("mercury_items.provider_panel.add_connection") %>
+      </div>
+    <% end %>
   <% end %>
 
 </div>

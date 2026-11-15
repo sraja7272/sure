@@ -299,6 +299,22 @@ class Settings::ProvidersControllerTest < ActionDispatch::IntegrationTest
     Setting.enabled_connectors = nil
   end
 
+  test "a switched-off connector's panel hides the form that adds another connection" do
+    MercuryItem.create!(family: families(:dylan_family), name: "Ops", token: "mercury-token")
+
+    get connect_form_settings_providers_url(provider_key: "mercury")
+    assert_response :success
+    assert_select "form[action=?]", mercury_items_path
+
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[mercury])
+
+    get connect_form_settings_providers_url(provider_key: "mercury")
+    assert_response :success
+    assert_select "form[action=?]", mercury_items_path, count: 0
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
   test "a switched-off connector stays listed for a family that has a connection through it" do
     Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[wise])
 

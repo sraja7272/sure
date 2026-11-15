@@ -92,33 +92,35 @@
   <% end %>
 
   <% brex_item = Current.family.brex_items.build(name: t("brex_items.provider_panel.default_connection_name")) %>
-  <% if active_items.any? %>
-    <%= render "settings/providers/add_connection_heading", label: t("brex_items.provider_panel.add_connection") %>
-  <% end %>
+  <% if connector_enabled?("brex") %>
+    <% if active_items.any? %>
+      <%= render "settings/providers/add_connection_heading", label: t("brex_items.provider_panel.add_connection") %>
+    <% end %>
 
-  <%= styled_form_with model: brex_item,
-                       url: brex_items_path,
-                       scope: :brex_item,
-                       method: :post,
-                       data: { turbo: true },
-                       class: "space-y-3" do |form| %>
-    <%= form.text_field :name,
-                        label: t("brex_items.provider_panel.connection_name_label"),
-                        placeholder: t("brex_items.provider_panel.connection_name_placeholder") %>
+    <%= styled_form_with model: brex_item,
+                         url: brex_items_path,
+                         scope: :brex_item,
+                         method: :post,
+                         data: { turbo: true },
+                         class: "space-y-3" do |form| %>
+      <%= form.text_field :name,
+                          label: t("brex_items.provider_panel.connection_name_label"),
+                          placeholder: t("brex_items.provider_panel.connection_name_placeholder") %>
 
-    <%= form.text_field :token,
-                        label: t("brex_items.provider_panel.token_label"),
-                        placeholder: t("brex_items.provider_panel.token_placeholder"),
-                        type: :password,
-                        value: nil %>
+      <%= form.text_field :token,
+                          label: t("brex_items.provider_panel.token_label"),
+                          placeholder: t("brex_items.provider_panel.token_placeholder"),
+                          type: :password,
+                          value: nil %>
 
-    <%= form.text_field :base_url,
-                        label: t("brex_items.provider_panel.base_url_label"),
-                        placeholder: t("brex_items.provider_panel.base_url_placeholder") %>
-    <p class="text-xs text-secondary px-1 -mt-1"><%= t("brex_items.provider_panel.sandbox_note_html") %></p>
+      <%= form.text_field :base_url,
+                          label: t("brex_items.provider_panel.base_url_label"),
+                          placeholder: t("brex_items.provider_panel.base_url_placeholder") %>
+      <p class="text-xs text-secondary px-1 -mt-1"><%= t("brex_items.provider_panel.sandbox_note_html") %></p>
 
-    <div class="flex justify-end">
-      <%= form.submit t("brex_items.provider_panel.add_connection") %>
-    </div>
+      <div class="flex justify-end">
+        <%= form.submit t("brex_items.provider_panel.add_connection") %>
+      </div>
+    <% end %>
   <% end %>
 </div>

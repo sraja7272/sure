@@ -131,6 +131,34 @@ class ConnectorGatedTest < ActionDispatch::IntegrationTest
     assert_equal I18n.t("connectors.disabled"), flash[:alert]
   end
 
+  test "snaptrade refuses to authorize an unfinished item even when another item is connected" do
+    assert snaptrade_items(:configured_item).existing_connection?
+    unfinished = @family.snaptrade_items.create!(name: "Unfinished")
+    Provider::Snaptrade.stubs(:authorization_code_configured?).returns(true)
+    Provider::Snaptrade.stubs(:oauth_configured?).returns(true)
+    Provider::ConnectorAvailability.update!(%w[plaid])
+
+    get oauth_authorize_snaptrade_items_path(item_id: unfinished.id)
+    assert_equal I18n.t("connectors.disabled"), flash[:alert]
+
+    post start_oauth_device_flow_snaptrade_items_path(item_id: unfinished.id)
+    assert_equal I18n.t("connectors.disabled"), flash[:alert]
+  end
+
+  test "snaptrade still re-authorizes a legacy item that has accounts but no token" do
+    legacy = snaptrade_items(:configured_item)
+    legacy.update_columns(oauth_access_token: nil)
+    assert legacy.snaptrade_accounts.exists?
+    Provider::Snaptrade.stubs(:authorization_code_configured?).returns(true)
+    Provider::Snaptrade.stubs(:generate_pkce).returns(verifier: "v", challenge: "c")
+    Provider::Snaptrade.stubs(:authorize_url).returns("https://snaptrade.example/authorize")
+    Provider::ConnectorAvailability.update!(%w[plaid])
+
+    get oauth_authorize_snaptrade_items_path(item_id: legacy.id)
+
+    assert_redirected_to "https://snaptrade.example/authorize"
+  end
+
   test "brex account flows are refused when brex is off" do
     Provider::ConnectorAvailability.update!(%w[plaid])
 

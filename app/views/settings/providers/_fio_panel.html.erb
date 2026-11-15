@@ -128,37 +128,39 @@
   <% end %>
 
   <% fio_item = Current.family.fio_items.build(name: t("fio_items.provider_panel.default_connection_name")) %>
-  <% if active_items.any? %>
-    <%= render "settings/providers/add_connection_heading", label: t("fio_items.provider_panel.add_connection") %>
-  <% end %>
+  <% if connector_enabled?("fio") %>
+    <% if active_items.any? %>
+      <%= render "settings/providers/add_connection_heading", label: t("fio_items.provider_panel.add_connection") %>
+    <% end %>
 
-  <%= styled_form_with model: fio_item,
-                       url: fio_items_path,
-                       scope: :fio_item,
-                       method: :post,
-                       data: { turbo: true },
-                       class: "space-y-3" do |form| %>
-    <%= form.text_field :name,
-                        label: t("fio_items.provider_panel.connection_name_label"),
-                        placeholder: t("fio_items.provider_panel.connection_name_placeholder") %>
+    <%= styled_form_with model: fio_item,
+                         url: fio_items_path,
+                         scope: :fio_item,
+                         method: :post,
+                         data: { turbo: true },
+                         class: "space-y-3" do |form| %>
+      <%= form.text_field :name,
+                          label: t("fio_items.provider_panel.connection_name_label"),
+                          placeholder: t("fio_items.provider_panel.connection_name_placeholder") %>
 
-    <%= form.text_field :token,
-                        label: t("fio_items.provider_panel.token_label"),
-                        placeholder: t("fio_items.provider_panel.token_placeholder"),
-                        type: :password,
-                        value: nil %>
+      <%= form.text_field :token,
+                          label: t("fio_items.provider_panel.token_label"),
+                          placeholder: t("fio_items.provider_panel.token_placeholder"),
+                          type: :password,
+                          value: nil %>
 
-    <%= form.date_field :sync_start_date,
-                        label: t("fio_items.provider_panel.sync_start_date_label"),
-                        max: Date.current %>
+      <%= form.date_field :sync_start_date,
+                          label: t("fio_items.provider_panel.sync_start_date_label"),
+                          max: Date.current %>
 
-    <p class="text-xs text-secondary"><%= t("fio_items.provider_panel.sync_start_date_hint") %></p>
+      <p class="text-xs text-secondary"><%= t("fio_items.provider_panel.sync_start_date_hint") %></p>
 
-    <div class="flex justify-end">
-      <%= render DS::Button.new(
-        text: t("fio_items.provider_panel.add_connection"),
-        type: "submit"
-      ) %>
-    </div>
+      <div class="flex justify-end">
+        <%= render DS::Button.new(
+          text: t("fio_items.provider_panel.add_connection"),
+          type: "submit"
+        ) %>
+      </div>
+    <% end %>
   <% end %>
 </div>

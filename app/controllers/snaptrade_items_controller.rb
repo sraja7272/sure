@@ -507,10 +507,16 @@ class SnaptradeItemsController < ApplicationController
 
   private
     # Re-authorizing an existing connection stays allowed when SnapTrade is
-    # switched off; starting the family's first one does not. An item that
-    # never finished authorizing has no tokens and doesn't count as existing.
+    # switched off; starting a new one does not. The check is on the item the
+    # request would authorize, so an unfinished item can't ride on another
+    # item's connection.
     def snaptrade_connection_allowed?
-      return true if Current.family.snaptrade_items.syncable.exists?
+      item = if params[:item_id].present?
+        Current.family.snaptrade_items.find_by(id: params[:item_id])
+      else
+        current_snaptrade_item
+      end
+      return true if item&.existing_connection?
 
       require_connector_enabled!("snaptrade")
       !performed?

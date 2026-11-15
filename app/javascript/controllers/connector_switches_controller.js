@@ -1,10 +1,12 @@
 import { Controller } from "@hotwired/stimulus";
+import { ConnectorSaveTracker } from "utils/connector_save_tracker";
 
 // Saves the Admin > Connectors switches shortly after they change. A burst of
 // clicks becomes one save of the final state, and one "saved" notice is shown
 // once the newest save has succeeded and the switches have been left alone for
 // a moment. Each save carries this page's id and a counter so the server can
-// ignore a save that reaches it after a newer one.
+// ignore a save that reaches it after a newer one; ConnectorSaveTracker keeps
+// the client-side ordering.
 export default class extends Controller {
   static targets = [
     "clientId",
@@ -19,12 +21,8 @@ export default class extends Controller {
   };
 
   connect() {
-    this.sequence = 0;
-    this.confirmedSequence = 0;
-    this.snapshots = new Map();
-    this.pending = false;
     this.clientIdTarget.value = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-    this.savedState = this.#currentState();
+    this.tracker = new ConnectorSaveTracker(this.#currentState());
   }
 
   disconnect() {
@@ -43,46 +41,31 @@ export default class extends Controller {
 
     clearTimeout(this.timeout);
     clearTimeout(this.noticeTimeout);
-    this.pending = true;
+    this.tracker.changed();
     this.timeout = setTimeout(() => {
-      this.pending = false;
-      this.sequence += 1;
-      this.sequenceTarget.value = this.sequence;
-      this.snapshots.set(this.sequence, this.#currentState());
+      this.sequenceTarget.value = this.tracker.submit(this.#currentState());
       this.element.requestSubmit();
     }, this.delayValue);
   }
 
   saved(event) {
     const { success, formSubmission } = event.detail;
-    const submitted = Number(
-      formSubmission?.formData?.get("sequence") ?? this.sequence,
+    const sequence = Number(
+      formSubmission?.formData?.get("sequence") ?? this.tracker.sequence,
     );
 
-    // Remember what the server confirmed, even for a save a newer change has
-    // overtaken, so a later failure restores the newest confirmed state.
-    if (success === true && submitted > this.confirmedSequence) {
-      this.confirmedSequence = submitted;
-      this.savedState = this.snapshots.get(submitted) ?? this.savedState;
-      for (const sequence of this.snapshots.keys()) {
-        if (sequence <= submitted) this.snapshots.delete(sequence);
-      }
-    }
-
-    // A newer change is waiting or was sent after this one: its own save will
-    // report. A save Turbo aborted for a newer one has no success value.
-    if (this.pending || submitted !== this.sequence || success === undefined)
-      return;
-
-    if (success) {
-      clearTimeout(this.noticeTimeout);
-      this.noticeTimeout = setTimeout(
-        () => this.#show(this.savedNoticeTarget),
-        this.noticeDelayValue,
-      );
-    } else {
-      this.#restoreSavedState();
-      this.#show(this.failedAlertTarget);
+    switch (this.tracker.finished(sequence, success)) {
+      case "saved":
+        clearTimeout(this.noticeTimeout);
+        this.noticeTimeout = setTimeout(
+          () => this.#show(this.savedNoticeTarget),
+          this.noticeDelayValue,
+        );
+        break;
+      case "failed":
+        this.#restore(this.tracker.confirmedState);
+        this.#show(this.failedAlertTarget);
+        break;
     }
   }
 
@@ -100,10 +83,9 @@ export default class extends Controller {
     );
   }
 
-  #restoreSavedState() {
+  #restore(state) {
     for (const input of this.#switches()) {
-      if (input.name in this.savedState)
-        input.checked = this.savedState[input.name];
+      if (input.name in state) input.checked = state[input.name];
     }
   }
 

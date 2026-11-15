@@ -93,8 +93,8 @@
         </div>
       <% end %>
 
-      <div class="flex justify-center pt-2">
-        <% if connector_enabled?("truelayer") %>
+      <% if connector_enabled?("truelayer") %>
+        <div class="flex justify-center pt-2">
           <%= render DS::Button.new(
             text: t("settings.providers.truelayer_panel.connect_bank"),
             icon: "plus",
@@ -103,8 +103,8 @@
             method: :post,
             data: { turbo: false }
           ) %>
-        <% end %>
-      </div>
+        </div>
+      <% end %>
     </div>
   <% end %>
 </div>

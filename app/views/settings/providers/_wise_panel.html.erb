@@ -124,33 +124,35 @@
     </div>
   <% end %>
 
-  <% if active_items.any? %>
-    <%= render "settings/providers/add_connection_heading", label: t("wise_items.provider_panel.add_connection") %>
-  <% end %>
+  <% if connector_enabled?("wise") %>
+    <% if active_items.any? %>
+      <%= render "settings/providers/add_connection_heading", label: t("wise_items.provider_panel.add_connection") %>
+    <% end %>
 
-  <%= styled_form_with url: wise_items_path,
-                       scope: :wise_item,
-                       method: :post,
-                       data: { turbo: true },
-                       class: "space-y-3" do |form| %>
-    <%= form.text_field :token,
-                        label: t("wise_items.provider_panel.token_label"),
-                        placeholder: t("wise_items.provider_panel.token_placeholder"),
-                        type: :password,
-                        value: nil %>
+    <%= styled_form_with url: wise_items_path,
+                         scope: :wise_item,
+                         method: :post,
+                         data: { turbo: true },
+                         class: "space-y-3" do |form| %>
+      <%= form.text_field :token,
+                          label: t("wise_items.provider_panel.token_label"),
+                          placeholder: t("wise_items.provider_panel.token_placeholder"),
+                          type: :password,
+                          value: nil %>
 
-    <p class="text-xs text-secondary px-1 -mt-1"><%= t("wise_items.provider_panel.sandbox_note_html").html_safe %></p>
+      <p class="text-xs text-secondary px-1 -mt-1"><%= t("wise_items.provider_panel.sandbox_note_html").html_safe %></p>
 
-    <div class="flex items-center justify-between gap-3 py-2">
-      <div class="space-y-1">
-        <p class="text-sm text-primary"><%= t("wise_items.provider_panel.import_all_history_label") %></p>
-        <p class="text-secondary text-sm"><%= t("wise_items.provider_panel.import_all_history_help") %></p>
+      <div class="flex items-center justify-between gap-3 py-2">
+        <div class="space-y-1">
+          <p class="text-sm text-primary"><%= t("wise_items.provider_panel.import_all_history_label") %></p>
+          <p class="text-secondary text-sm"><%= t("wise_items.provider_panel.import_all_history_help") %></p>
+        </div>
+        <%= form.toggle :import_all_history %>
       </div>
-      <%= form.toggle :import_all_history %>
-    </div>
 
-    <div class="flex justify-end">
-      <%= form.submit t("wise_items.provider_panel.connect") %>
-    </div>
+      <div class="flex justify-end">
+        <%= form.submit t("wise_items.provider_panel.connect") %>
+      </div>
+    <% end %>
   <% end %>
 </div>

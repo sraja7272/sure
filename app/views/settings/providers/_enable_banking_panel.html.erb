@@ -190,17 +190,15 @@
       <% end %>
 
       <%# Add Connection button below the list - only show if we have a valid session to copy credentials from %>
-      <% if item_for_new_connection %>
+      <% if item_for_new_connection && connector_enabled?("enable_banking") %>
         <div class="flex justify-center pt-2">
-          <% if connector_enabled?("enable_banking") %>
-            <%= render DS::Button.new(
-              text: t("settings.providers.enable_banking_panel.add_connection"),
-              icon: "plus",
-              href: new_connection_enable_banking_item_path(item_for_new_connection),
-              variant: :primary,
-              data: { turbo_method: :post, turbo_frame: "modal" }
-            ) %>
-          <% end %>
+          <%= render DS::Button.new(
+            text: t("settings.providers.enable_banking_panel.add_connection"),
+            icon: "plus",
+            href: new_connection_enable_banking_item_path(item_for_new_connection),
+            variant: :primary,
+            data: { turbo_method: :post, turbo_frame: "modal" }
+          ) %>
         </div>
       <% end %>
     </div>

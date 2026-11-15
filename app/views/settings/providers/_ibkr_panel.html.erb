@@ -172,31 +172,33 @@
     <%= render "settings/providers/add_connection_heading", label: t(".add_connection") %>
   <% end %>
 
-  <% new_item = Current.family.ibkr_items.build(name: local_assigns[:new_item_name]) %>
-  <%= styled_form_with model: new_item,
-                       url: ibkr_items_path,
-                       scope: :ibkr_item,
-                       method: :post,
-                       data: { turbo: true },
-                       class: "space-y-3" do |form| %>
-    <%= form.text_field :name,
-                        label: t(".connection_name_label"),
-                        placeholder: t(".connection_name_placeholder") %>
+  <% if connector_enabled?("ibkr") %>
+    <% new_item = Current.family.ibkr_items.build(name: local_assigns[:new_item_name]) %>
+    <%= styled_form_with model: new_item,
+                         url: ibkr_items_path,
+                         scope: :ibkr_item,
+                         method: :post,
+                         data: { turbo: true },
+                         class: "space-y-3" do |form| %>
+      <%= form.text_field :name,
+                          label: t(".connection_name_label"),
+                          placeholder: t(".connection_name_placeholder") %>
 
-    <%= form.text_field :query_id,
-                        label: t(".query_id_label"),
-                        placeholder: t(".query_id_placeholder_new"),
-                        type: :password,
-                        value: nil %>
+      <%= form.text_field :query_id,
+                          label: t(".query_id_label"),
+                          placeholder: t(".query_id_placeholder_new"),
+                          type: :password,
+                          value: nil %>
 
-    <%= form.text_field :token,
-                        label: t(".token_label"),
-                        placeholder: t(".token_placeholder_new"),
-                        type: :password,
-                        value: nil %>
+      <%= form.text_field :token,
+                          label: t(".token_label"),
+                          placeholder: t(".token_placeholder_new"),
+                          type: :password,
+                          value: nil %>
 
-    <div class="flex justify-end">
-      <%= form.submit t(".add_connection") %>
-    </div>
+      <div class="flex justify-end">
+        <%= form.submit t(".add_connection") %>
+      </div>
+    <% end %>
   <% end %>
 </div>

@@ -88,31 +88,33 @@
   <% end %>
 
   <% up_item = Current.family.up_items.build(name: t("up_items.provider_panel.default_connection_name")) %>
-  <% if active_items.any? %>
-    <%= render "settings/providers/add_connection_heading", label: t("up_items.provider_panel.add_connection") %>
-  <% end %>
+  <% if connector_enabled?("up") %>
+    <% if active_items.any? %>
+      <%= render "settings/providers/add_connection_heading", label: t("up_items.provider_panel.add_connection") %>
+    <% end %>
 
-  <%= styled_form_with model: up_item,
-                       url: up_items_path,
-                       scope: :up_item,
-                       method: :post,
-                       data: { turbo: true },
-                       class: "space-y-3" do |form| %>
-    <%= form.text_field :name,
-                        label: t("up_items.provider_panel.connection_name_label"),
-                        placeholder: t("up_items.provider_panel.connection_name_placeholder") %>
+    <%= styled_form_with model: up_item,
+                         url: up_items_path,
+                         scope: :up_item,
+                         method: :post,
+                         data: { turbo: true },
+                         class: "space-y-3" do |form| %>
+      <%= form.text_field :name,
+                          label: t("up_items.provider_panel.connection_name_label"),
+                          placeholder: t("up_items.provider_panel.connection_name_placeholder") %>
 
-    <%= form.text_field :access_token,
-                        label: t("up_items.provider_panel.access_token_label"),
-                        placeholder: t("up_items.provider_panel.access_token_placeholder"),
-                        type: :password,
-                        value: nil %>
+      <%= form.text_field :access_token,
+                          label: t("up_items.provider_panel.access_token_label"),
+                          placeholder: t("up_items.provider_panel.access_token_placeholder"),
+                          type: :password,
+                          value: nil %>
 
-    <div class="flex justify-end">
-      <%= render DS::Button.new(
-        text: t("up_items.provider_panel.add_connection"),
-        type: "submit"
-      ) %>
-    </div>
+      <div class="flex justify-end">
+        <%= render DS::Button.new(
+          text: t("up_items.provider_panel.add_connection"),
+          type: "submit"
+        ) %>
+      </div>
+    <% end %>
   <% end %>
 </div>
