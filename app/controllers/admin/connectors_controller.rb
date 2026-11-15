@@ -6,21 +6,16 @@ module Admin
       set_page
     end
 
-    # The page saves on every switch change and keeps its own switch state, so a
-    # successful save answers with just the notification instead of redrawing
-    # the switches (which could undo clicks made while the save was in flight).
+    # The page saves batched switch changes in the background and keeps its own
+    # switch state, so a successful save answers with nothing: redrawing the
+    # switches could undo clicks made while the save was in flight.
     def update
-      applied = Provider::ConnectorAvailability.update!(
+      Provider::ConnectorAvailability.update!(
         enabled_keys_param, client_id: params[:client_id], sequence: params[:sequence]
       )
 
       respond_to do |format|
-        format.turbo_stream do
-          next head(:no_content) unless applied
-
-          flash.now[:notice] = t(".success")
-          render turbo_stream: flash_notification_stream_items
-        end
+        format.turbo_stream { head :no_content }
         format.html { redirect_to admin_connectors_path, notice: t(".success") }
       end
     rescue Provider::ConnectorAvailability::NoneEnabledError

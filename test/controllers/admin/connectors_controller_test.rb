@@ -44,15 +44,14 @@ class Admin::ConnectorsControllerTest < ActionDispatch::IntegrationTest
     assert_equal %w[plaid], Provider::ConnectorAvailability.enabled_keys
   end
 
-  test "an auto-save answers with the notification only, leaving the switches alone" do
+  test "an auto-save answers with no content, so no notification and no redraw" do
     sign_in users(:sure_support_staff)
     params = Provider::ConnectorAvailability.keys.index_with { "0" }.merge("plaid" => "1")
 
     patch admin_connectors_path, params: { connectors: params, client_id: "page-1", sequence: 1 }, as: :turbo_stream
 
-    assert_response :success
-    assert_includes response.body, I18n.t("admin.connectors.update.success")
-    assert_not_includes response.body, "connector_switches"
+    assert_response :no_content
+    assert_empty response.body
     assert_equal %w[plaid], Provider::ConnectorAvailability.enabled_keys
   end
 
