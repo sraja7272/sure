@@ -5,12 +5,13 @@
 # (`opus`, `sonnet`, `haiku`, `fable` for Fable 5.2, or a full model id); the
 # default is `opus`.
 #
-# Runs authenticate with a Claude API key stored in the ANTHROPIC_API_KEY repo
-# secret. The key is created in Claude Console, and runs bill the workspace
-# that key belongs to.
+# Runs authenticate with a Claude subscription token stored in the
+# CLAUDE_CODE_OAUTH_TOKEN repo secret. The token is created with
+# `claude setup-token`, and runs count against that subscription's usage
+# limits.
 #
 # Reviews do not run the tests themselves (that would run PR code next to the
-# API credentials); they read the results of the CI workflow instead.
+# credentials); they read the results of the CI workflow instead.
 name: Claude
 
 on:
@@ -24,7 +25,7 @@ on:
 jobs:
   claude:
     # Three gates, all required:
-    # 1. Only people on the allow-list can spend the API credits. To add
+    # 1. Only people on the allow-list can spend the subscription usage. To add
     #    someone, extend the list, e.g.
     #      contains(fromJSON('["sraja7272", "another-user"]'), github.actor)
     #    (they also need write access to the repo; the action checks that too).
@@ -65,9 +66,12 @@ jobs:
 
       - uses: anthropics/claude-code-action@58985842b834ed26087302ba27d07bc24ca8697a # v1.0.240 (v1)
         with:
-          # Claude API key from the ANTHROPIC_API_KEY repo secret, created in
-          # Claude Console; runs bill that key's workspace.
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Subscription token from `claude setup-token`, stored in the
+          # CLAUDE_CODE_OAUTH_TOKEN repo secret; runs count against that Claude
+          # subscription's usage limits. Not an API key: the API credit included
+          # with a Claude subscription does not cover runs started by this
+          # action, which then fail with "Credit balance is too low".
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           # The job's `actions: read` grant alone is not enough: the action adds
           # its CI tools (get_ci_status, get_workflow_run_details,
           # download_job_log) only when this input asks for it.
