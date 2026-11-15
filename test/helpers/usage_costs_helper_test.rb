@@ -32,6 +32,14 @@ class UsageCostsHelperTest < ActionView::TestCase
     assert_equal "$0.0001", format_usage_cost(BigDecimal("0.0001"), precision: 4)
   end
 
+  test "a Plaid rate shows two decimals at least and every decimal it has" do
+    assert_equal 2, plaid_rate_precision(BigDecimal("0.2"))
+    assert_equal 2, plaid_rate_precision(BigDecimal("3"))
+    assert_equal 2, plaid_rate_precision(BigDecimal("0"))
+    assert_equal 3, plaid_rate_precision(BigDecimal("0.125"))
+    assert_equal 3, plaid_rate_precision(BigDecimal("0.1250"))
+  end
+
   test "the less-than figure is escaped when rendered" do
     assert_equal "&lt;$0.0001", ERB::Util.html_escape(format_usage_cost(BigDecimal("0.00004")))
   end

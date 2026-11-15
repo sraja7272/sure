@@ -20,7 +20,7 @@
     <% else %>
       <% @report.groups.each do |group| %>
         <% family_name = group.family.name.presence || t(".unnamed_family") %>
-        <%= render layout: "shared/usage_cost_section", locals: { title: family_name } do %>
+        <%= usage_cost_section title: family_name do %>
           <%= render DS::Table.new(
             rows: group.lines + [ group.subtotal ],
             label: family_name,
@@ -37,10 +37,10 @@
               <% end %>
             <% end %>
             <% table.with_column(t(".ai_requests"), numeric: true) { |row| render "shared/usage_cost_requests", requests: row.ai_requests, unpriced: row.ai_unpriced_requests } %>
-            <% table.with_column(t(".ai_cost"), numeric: true) { |row| format_usage_cost(row.ai_cost, precision: 4) } %>
+            <% table.with_column(t(".ai_cost"), numeric: true, class: "privacy-sensitive") { |row| format_usage_cost(row.ai_cost, precision: 4) } %>
             <% table.with_column(t(".plaid_items"), numeric: true) { |row| number_with_delimiter(row.plaid_items).to_s } %>
-            <% table.with_column(t(".plaid_cost"), numeric: true) { |row| format_usage_cost(row.plaid_cost) } %>
-            <% table.with_column(t(".total"), numeric: true) { |row| format_usage_cost(row.total) } %>
+            <% table.with_column(t(".plaid_cost"), numeric: true, class: "privacy-sensitive") { |row| format_usage_cost(row.plaid_cost) } %>
+            <% table.with_column(t(".total"), numeric: true, class: "privacy-sensitive") { |row| format_usage_cost(row.total) } %>
           <% end %>
         <% end %>
       <% end %>
@@ -68,6 +68,7 @@
                     currency_value_override: "USD",
                     value: @rates[key],
                     precision: plaid_rate_precision(@rates[key]),
+                    min_precision: 2,
                     placeholder: "0.00",
                     min: 0,
                     step: "any",

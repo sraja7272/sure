@@ -17,8 +17,6 @@ id:
       sso_provider_unavailable: "Penyedia SSO saat ini tidak tersedia. Silakan coba lagi nanti atau hubungi administrator."
       sso_invalid_response: "Menerima respons tidak valid dari penyedia SSO. Silakan coba lagi."
       sso_failed: "Autentikasi single sign-on gagal. Silakan coba lagi."
-    mobile_sso_start:
-      redirecting_html: "Mengarahkan untuk masuk... <a href=\"%{url}\">Klik di sini</a> jika tidak dialihkan secara otomatis."
     new:
       email: Alamat email
       email_placeholder: nama@contoh.com

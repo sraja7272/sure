@@ -16,6 +16,8 @@ Rails.configuration.x.auth.local_admin_override_enabled = auth_config.dig(:local
 
 Rails.configuration.x.auth.passkey_login_enabled = auth_config.dig(:passkey_login, :enabled)
 
+Rails.configuration.x.auth.sso_auto_redirect = auth_config.dig(:sso, :auto_redirect)
+
 Rails.configuration.x.auth.jit_mode = auth_config.dig(:jit, :mode) || "create_and_link"
 
 raw_domains = auth_config.dig(:jit, :allowed_oidc_domains).to_s

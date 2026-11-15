@@ -1,8 +1,13 @@
 class RegistrationsController < ApplicationController
+  include SsoAutoRedirectable
+
   skip_authentication
 
   layout "auth"
 
+  # Runs before the signup-closed check so that case reaches the provider
+  # instead of bouncing to sign-in with an alert, which would show the page.
+  before_action :redirect_to_sso_sign_in
   before_action :ensure_signup_open, if: :self_hosted?
   before_action :set_user, only: :create
   before_action :set_invitation
@@ -113,6 +118,18 @@ class RegistrationsController < ApplicationController
       if @user.errors.present?
         render :new, status: :unprocessable_entity
       end
+    end
+
+    # With SSO auto-redirect on, accounts are created by the provider sign-in
+    # flow, so password sign-up is not offered.
+    def redirect_to_sso_sign_in
+      return unless sso_auto_redirect_provider
+
+      # Carried to the provider sign-in so an invitation link still leads to
+      # the family it came from.
+      token = params[:invitation]
+      session[:pending_invitation_token] = token if token.is_a?(String) && token.present?
+      redirect_to new_session_path
     end
 
     def ensure_signup_open

@@ -1,5 +1,6 @@
 class SessionsController < ApplicationController
   extend SslConfigurable
+  include SsoAutoRedirectable
 
   before_action :set_session, only: :destroy
   skip_authentication only: %i[index new create openid_connect failure post_logout mobile_sso_start desktop_sso_start desktop_exchange]
@@ -36,6 +37,8 @@ class SessionsController < ApplicationController
       @email = params[:email]
       @password = params[:password]
     end
+
+    start_sso_auto_redirect
   end
 
   def create
@@ -110,6 +113,7 @@ class SessionsController < ApplicationController
     @session.destroy
     session.delete(:id_token_hint)
     session.delete(:sso_login_provider)
+    session.delete(:pending_invitation_token)
 
     # Check if we should redirect to IdP for federated logout
     if oidc_identity && id_token.present?
@@ -304,6 +308,9 @@ class SessionsController < ApplicationController
       # Store id_token and provider for RP-initiated logout
       session[:id_token_hint] = auth.credentials&.id_token if auth.credentials&.id_token
       session[:sso_login_provider] = auth.provider
+      # An invitation link only applies to creating an account, not to
+      # signing in to an existing one.
+      session.delete(:pending_invitation_token)
 
       # MFA check: If user has MFA enabled, require verification
       if user.otp_required?
@@ -541,6 +548,19 @@ class SessionsController < ApplicationController
       return unless user&.super_admin?
 
       Rails.logger.info("[AUTH] Super admin override login: user_id=#{user.id} email=#{user.email}")
+    end
+
+    # Hands the visitor to the single SSO provider instead of rendering the
+    # sign-in page. Every failed SSO attempt comes back here with an alert, so
+    # showing the page in that case is what keeps a broken provider from
+    # looping. OmniAuth only accepts a CSRF-protected POST, hence the
+    # auto-submitting form rather than a redirect.
+    def start_sso_auto_redirect
+      provider = sso_auto_redirect_provider
+      return if provider.nil? || flash[:alert].present?
+
+      @provider = provider[:name].to_s
+      render :mobile_sso_start, layout: false
     end
 
     def demo_host_match?(demo)

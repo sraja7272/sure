@@ -12,6 +12,7 @@ const {
   default: evaluateAmountExpression,
   amountBoundViolation,
   formatAmountForDisplay,
+  formatUnroundedAmount,
   precisionFromStep,
 } = await import(MODULE_URL)
 
@@ -478,6 +479,41 @@ describe("formatAmountForDisplay", () => {
     it("still substitutes a comma when the raw text used one", () => {
       assert.equal(formatAmountForDisplay(0.1 + 0.2, null, "0,1+0,2"), "0,3")
     })
+  })
+
+  describe("null precision with a minimum (the Plaid rates form)", () => {
+    it("pads to the minimum decimals", () => {
+      assert.equal(formatAmountForDisplay(0.2, null, ".20", 2), "0.20")
+      assert.equal(formatAmountForDisplay(0.2, null, ".2", 2), "0.20")
+      assert.equal(formatAmountForDisplay(3, null, "3", 2), "3.00")
+    })
+
+    it("keeps every decimal past the minimum, unrounded", () => {
+      assert.equal(formatAmountForDisplay(0.125, null, "0.125", 2), "0.125")
+      assert.equal(formatAmountForDisplay(0.125, null, "0.1250", 2), "0.125")
+      assert.equal(formatAmountForDisplay(0.00000001, null, "0.00000001", 2), "0.00000001")
+    })
+
+    it("pads a comma amount too", () => {
+      assert.equal(formatAmountForDisplay(0.2, null, ",2", 2), "0,20")
+    })
+
+    it("ignores the minimum when the field has a precision", () => {
+      assert.equal(formatAmountForDisplay(0.125, 2, "0.125", 4), "0.13")
+    })
+  })
+})
+
+describe("formatUnroundedAmount", () => {
+  it("trims trailing zeros by default", () => {
+    assert.equal(formatUnroundedAmount(0.2), "0.2")
+    assert.equal(formatUnroundedAmount(3), "3")
+  })
+
+  it("keeps at least the given number of decimals", () => {
+    assert.equal(formatUnroundedAmount(0.2, 2), "0.20")
+    assert.equal(formatUnroundedAmount(3, 2), "3.00")
+    assert.equal(formatUnroundedAmount(0.125, 2), "0.125")
   })
 })
 

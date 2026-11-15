@@ -17,8 +17,6 @@ nl:
       sso_provider_unavailable: "De SSO provider is momenteel niet beschikbaar. Probeer het later opnieuw of neem contact op met een beheerder."
       sso_invalid_response: "Ongeldige reactie ontvangen van de SSO provider. Probeer het opnieuw."
       sso_failed: "Single sign-on authenticatie mislukt. Probeer het opnieuw."
-    mobile_sso_start:
-      redirecting_html: "Doorsturen naar inloggen... <a href=\"%{url}\">Klik hier</a> als u niet wordt doorgestuurd."
     new:
       email: "E-mailadres"
       email_placeholder: "u@voorbeeld.nl"

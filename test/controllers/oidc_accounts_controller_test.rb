@@ -438,6 +438,55 @@ class OidcAccountsControllerTest < ActionController::TestCase
       AccountShare.where(user: invitee).pluck(:account_id).sort
   end
 
+  test "create_user accepts the invitation from the followed link over another one for the same email" do
+    first = invitations(:one)
+    second = Invitation.new(
+      email: first.email, role: "admin", inviter: users(:empty), family: families(:empty),
+      token: "valid-token-same-email", expires_at: 3.days.from_now
+    )
+    # The model allows one pending invitation per email; skip that check to
+    # build the case where only the token can tell two apart.
+    second.save!(validate: false)
+
+    # Follow whichever invitation the lookup by email would not pick.
+    by_email = Invitation.pending.find_by(email: first.email)
+    linked = ([ first, second ] - [ by_email ]).first
+
+    session[:pending_invitation_token] = linked.token
+    session[:pending_oidc_auth] = {
+      "provider" => "openid_connect", "uid" => "invite-link-uid-1",
+      "email" => first.email.upcase, "first_name" => "In", "last_name" => "Vitee"
+    }
+
+    post :create_user
+    assert_redirected_to root_path
+
+    invitee = User.find_by(email: first.email)
+    assert_equal linked.family_id, invitee.family_id
+    assert_equal linked.role, invitee.role
+    assert_not_nil linked.reload.accepted_at
+    assert_nil by_email.reload.accepted_at
+    assert_nil session[:pending_invitation_token]
+  end
+
+  test "create_user starts a new family when the provider email is not the invited one" do
+    invitation = invitations(:one)
+    session[:pending_invitation_token] = invitation.token
+    session[:pending_oidc_auth] = {
+      "provider" => "openid_connect", "uid" => "invite-link-uid-2",
+      "email" => "someone-else@example.com", "first_name" => "Some", "last_name" => "One"
+    }
+
+    assert_difference "Family.count", +1 do
+      post :create_user
+    end
+    assert_redirected_to root_path
+
+    newcomer = User.find_by(email: "someone-else@example.com")
+    assert_not_equal invitation.family_id, newcomer.family_id
+    assert_nil invitation.reload.accepted_at
+  end
+
   test "create_user via invitation shares nothing when family sharing is private" do
     family = families(:dylan_family)
     family.update!(default_account_sharing: "private")
