@@ -113,6 +113,7 @@ class SessionsController < ApplicationController
     @session.destroy
     session.delete(:id_token_hint)
     session.delete(:sso_login_provider)
+    session.delete(:pending_invitation_token)
 
     # Check if we should redirect to IdP for federated logout
     if oidc_identity && id_token.present?
@@ -307,6 +308,9 @@ class SessionsController < ApplicationController
       # Store id_token and provider for RP-initiated logout
       session[:id_token_hint] = auth.credentials&.id_token if auth.credentials&.id_token
       session[:sso_login_provider] = auth.provider
+      # An invitation link only applies to creating an account, not to
+      # signing in to an existing one.
+      session.delete(:pending_invitation_token)
 
       # MFA check: If user has MFA enabled, require verification
       if user.otp_required?

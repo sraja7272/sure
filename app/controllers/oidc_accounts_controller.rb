@@ -63,6 +63,7 @@ class OidcAccountsController < ApplicationController
 
       # Clear pending auth from session
       session.delete(:pending_oidc_auth)
+      session.delete(:pending_invitation_token)
 
       if user.otp_required?
         session[:mfa_user_id] = user.id

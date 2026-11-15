@@ -17,6 +17,15 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     assert_equal invitations(:one).token, session[:pending_invitation_token]
   end
 
+  test "new does not keep a malformed invitation param when SSO auto-redirect is on" do
+    stub_sso_auto_redirect
+
+    get new_registration_url(invitation: { x: "y" })
+
+    assert_redirected_to new_session_path
+    assert_nil session[:pending_invitation_token]
+  end
+
   test "new reaches sign-in without an alert when signup is closed and SSO auto-redirect is on" do
     stub_sso_auto_redirect
     Setting.stubs(:onboarding_state).returns("closed")

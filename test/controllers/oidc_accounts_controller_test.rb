@@ -438,21 +438,34 @@ class OidcAccountsControllerTest < ActionController::TestCase
       AccountShare.where(user: invitee).pluck(:account_id).sort
   end
 
-  test "create_user accepts the invitation from the followed link when the provider email matches" do
-    invitation = invitations(:one)
-    session[:pending_invitation_token] = invitation.token
+  test "create_user accepts the invitation from the followed link over another one for the same email" do
+    first = invitations(:one)
+    second = Invitation.new(
+      email: first.email, role: "admin", inviter: users(:empty), family: families(:empty),
+      token: "valid-token-same-email", expires_at: 3.days.from_now
+    )
+    # The model allows one pending invitation per email; skip that check to
+    # build the case where only the token can tell two apart.
+    second.save!(validate: false)
+
+    # Follow whichever invitation the lookup by email would not pick.
+    by_email = Invitation.pending.find_by(email: first.email)
+    linked = ([ first, second ] - [ by_email ]).first
+
+    session[:pending_invitation_token] = linked.token
     session[:pending_oidc_auth] = {
       "provider" => "openid_connect", "uid" => "invite-link-uid-1",
-      "email" => invitation.email.upcase, "first_name" => "In", "last_name" => "Vitee"
+      "email" => first.email.upcase, "first_name" => "In", "last_name" => "Vitee"
     }
 
     post :create_user
     assert_redirected_to root_path
 
-    invitee = User.find_by(email: invitation.email)
-    assert_equal invitation.family_id, invitee.family_id
-    assert_equal invitation.role, invitee.role
-    assert_not_nil invitation.reload.accepted_at
+    invitee = User.find_by(email: first.email)
+    assert_equal linked.family_id, invitee.family_id
+    assert_equal linked.role, invitee.role
+    assert_not_nil linked.reload.accepted_at
+    assert_nil by_email.reload.accepted_at
     assert_nil session[:pending_invitation_token]
   end
 
