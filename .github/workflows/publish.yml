@@ -32,8 +32,8 @@ on:
     paths-ignore:
       - 'charts/**'
       - 'mobile/**'
-  schedule:
-    - cron: '30 1 * * *'
+  # No nightly schedule on this fork: images are built when main changes,
+  # or by hand from the Actions tab.
 
 env:
   REGISTRY: ghcr.io
