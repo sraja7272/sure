@@ -807,6 +807,23 @@ class InvestmentStatementTest < ActiveSupport::TestCase
     InvestmentStatement.new(@family.reload).totals(period: period)
   end
 
+  test "totals cache invalidates when a rate is stored in the same second as the newest one" do
+    create_investment_account(balance: 500)
+    period = Period.last_30_days
+    stored_at = 1.minute.from_now.change(usec: 100_000)
+
+    ExchangeRate.create!(from_currency: "KRW", to_currency: "USD", date: Date.current, rate: 0.00075, updated_at: stored_at)
+
+    Rails.stubs(:cache).returns(ActiveSupport::Cache::MemoryStore.new)
+    dummy_result = { contributions: 0, withdrawals: 0, dividends: 0, interest: 0, trades_count: 0 }
+    InvestmentStatement::Totals.expects(:new).twice.returns(stub(call: dummy_result))
+
+    InvestmentStatement.new(@family).totals(period: period)
+
+    ExchangeRate.create!(from_currency: "JPY", to_currency: "USD", date: Date.current, rate: 0.0067, updated_at: stored_at + 0.5.seconds)
+    InvestmentStatement.new(@family.reload).totals(period: period)
+  end
+
   # Two parcels of one security, materialised the way a sync does: 60 bought on
   # 2024-01-10 at $12 and 40 on 2024-03-05 at $20 (blended $15.20), then 40 sold
   # on 2024-06-01 at $25 and priced at $30 the day after. Average cost relieves
