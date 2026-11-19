@@ -4,6 +4,8 @@
 # registry key that arrives as a parameter, gets validated against the registry,
 # and is never branched on.
 class OnchainWalletItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "onchain_wallet", also: %i[new_wallet preview_wallet link_wallet]
   before_action :require_admin!
   before_action :set_onchain_wallet_item,
                 only: %i[update destroy sync manage review_tokens update_tokens

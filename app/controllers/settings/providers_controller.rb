@@ -115,6 +115,10 @@ class Settings::ProvidersController < ApplicationController
     # Not FAMILY_PANELS_BY_KEY[provider_key]: Brakeman reads that as the param
     # choosing the partial to render.
     panel = FAMILY_PANELS.find { |p| p[:key] == provider_key }
+    if panel && connector_offer_hidden?(panel[:key])
+      return redirect_to settings_providers_path, alert: t("connectors.disabled")
+    end
+
     if panel
       @panel_key     = panel[:key]
       @panel_partial = panel[:partial]
@@ -488,6 +492,24 @@ class Settings::ProvidersController < ApplicationController
         summary: view_context.financekit_provider_summary(@financekit_connections)
       }
 
-      (configuration_entries + family_entries + [ wallet_entry ]).sort_by { |entry| entry[:title].downcase }
+      (configuration_entries + family_entries + [ wallet_entry ])
+        .reject { |entry| hidden_connector_entry?(entry) }
+        .sort_by { |entry| entry[:title].downcase }
+    end
+
+    # Switched off and the family has no connection through it to manage.
+    def connector_offer_hidden?(key)
+      return false if Provider::ConnectorAvailability.enabled?(key)
+
+      syncable_type = PANEL_SYNCABLE_TYPES[key]
+      syncable_type.nil? || !syncable_type.constantize.where(family: Current.family).exists?
+    end
+
+    # A connector a super admin switched off is no longer offered, but a family
+    # that already has a connection through it keeps seeing it to manage it.
+    # Goes by the family's records, not the summary: some summaries skip items
+    # (e.g. SimpleFIN without an access URL) that still need managing.
+    def hidden_connector_entry?(entry)
+      entry[:summary][:status] == :off && connector_offer_hidden?(entry[:provider_key])
     end
 end

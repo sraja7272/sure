@@ -9,6 +9,8 @@
 # every screen here works on `fio_item.fio_account` — discovered by the first sync — and
 # never offers a picker.
 class FioItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "fio"
   before_action :set_fio_item, only: [ :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]
   before_action :require_admin!, only: [
     :create, :select_accounts, :link_accounts,

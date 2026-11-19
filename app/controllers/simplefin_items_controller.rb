@@ -1,4 +1,6 @@
 class SimplefinItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "simplefin"
   include SimplefinItems::MapsHelper
   before_action :set_simplefin_item, only: [ :show, :edit, :update, :destroy, :sync, :balances, :setup_accounts, :complete_account_setup, :dismiss_replacement_suggestion ]
   before_action :require_admin!, only: [ :new, :create, :select_existing_account, :link_existing_account, :edit, :update, :destroy, :sync, :balances, :setup_accounts, :complete_account_setup, :dismiss_replacement_suggestion ]

@@ -1,4 +1,6 @@
 class PlaidItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "plaid"
   include StreamExtensions, ConnectorAuthorizable
 
   connects_provider PlaidItem

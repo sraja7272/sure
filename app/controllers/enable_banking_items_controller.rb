@@ -1,4 +1,6 @@
 class EnableBankingItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "enable_banking", also: %i[select_bank new_connection]
   include EnableBankingItems::MapsHelper
   include SafeProviderRedirect
   before_action :set_enable_banking_item, only: [ :update, :destroy, :sync, :select_bank, :authorize, :reauthorize, :setup_accounts, :complete_account_setup, :new_connection ]
@@ -98,6 +100,13 @@ class EnableBankingItemsController < ApplicationController
     unless aspsp_name.present?
       redirect_to settings_providers_path, alert: t(".bank_required", default: "Please select a bank.")
       return
+    end
+
+    # Re-authorizing an existing connection stays allowed when the connector
+    # is switched off; starting another connection does not.
+    if params[:new_connection] == "true"
+      require_connector_enabled!("enable_banking")
+      return if performed?
     end
 
     begin

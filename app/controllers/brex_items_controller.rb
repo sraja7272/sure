@@ -1,4 +1,6 @@
 class BrexItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "brex"
   before_action :set_brex_item, only: [ :show, :edit, :update, :destroy, :sync ]
   before_action :require_admin!, only: [ :new, :create, :edit, :update, :destroy, :sync ]
 

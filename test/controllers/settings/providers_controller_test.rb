@@ -255,6 +255,124 @@ class Settings::ProvidersControllerTest < ActionDispatch::IntegrationTest
     refute_includes response.body, "Test Brex Connection"
   end
 
+  test "a switched-off connector is not offered to a family without a connection through it" do
+    sign_in users(:empty)
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[brex])
+
+    get settings_providers_url
+    assert_response :success
+    assert_not_includes response.body, connect_form_settings_providers_path(provider_key: "brex")
+
+    get connect_form_settings_providers_url(provider_key: "brex")
+    assert_redirected_to settings_providers_path
+    assert_equal I18n.t("connectors.disabled"), flash[:alert]
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
+  test "a switched-off SimpleFIN stays listed for a family whose item has no access URL" do
+    item = SimplefinItem.create!(family: families(:dylan_family), name: "Half set up", access_url: "https://example.com/access")
+    item.update_columns(access_url: nil)
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[simplefin])
+
+    get settings_providers_url
+
+    assert_response :success
+    assert_includes response.body, connect_form_settings_providers_path(provider_key: "simplefin")
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
+  test "a switched-off connector's panel hides the button that adds another connection" do
+    TruelayerItem.create!(family: families(:dylan_family), name: "Acme Bank", client_id: "sure-test", client_secret: "secret", refresh_token: "rt")
+
+    get connect_form_settings_providers_url(provider_key: "truelayer")
+    assert_response :success
+    assert_includes response.body, connect_truelayer_items_path
+
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[truelayer])
+
+    get connect_form_settings_providers_url(provider_key: "truelayer")
+    assert_response :success
+    assert_not_includes response.body, connect_truelayer_items_path
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
+  test "a switched-off connector's panel hides the form that adds another connection" do
+    MercuryItem.create!(family: families(:dylan_family), name: "Ops", token: "mercury-token")
+
+    get connect_form_settings_providers_url(provider_key: "mercury")
+    assert_response :success
+    assert_select "form[action=?]", mercury_items_path
+
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[mercury])
+
+    get connect_form_settings_providers_url(provider_key: "mercury")
+    assert_response :success
+    assert_select "form[action=?]", mercury_items_path, count: 0
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
+  test "a switched-off SimpleFIN drawer explains why it offers no setup" do
+    SimplefinItem.create!(family: families(:dylan_family), name: "Existing", access_url: "https://example.com/access")
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[simplefin])
+
+    get connect_form_settings_providers_url(provider_key: "simplefin")
+
+    assert_response :success
+    assert_includes response.body, I18n.t("connectors.disabled")
+    assert_not_includes response.body, I18n.t("settings.providers.simplefin_panel.step_2")
+    assert_select "form[action=?]", simplefin_items_path, count: 0
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
+  test "a switched-off IBKR panel drops the add-connection heading and form" do
+    families(:dylan_family).ibkr_items.create!(name: "IBKR", query_id: "q1", token: "t1")
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[ibkr])
+
+    get connect_form_settings_providers_url(provider_key: "ibkr")
+
+    assert_response :success
+    assert_not_includes response.body, I18n.t("settings.providers.ibkr_panel.add_connection")
+    assert_select "form[action=?]", ibkr_items_path, count: 0
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
+  test "switched-off Sophtron, Trading 212 and Trade Republic panels offer no create form" do
+    family = families(:dylan_family)
+    family.sophtron_items.create!(name: "Sophtron", user_id: "user", access_key: "key")
+    family.trading212_items.create!(name: "Trading 212", api_key: "key", api_secret: "secret")
+    family.trade_republic_items.create!(name: "Trade Republic", phone_number: "+4915112345678")
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[sophtron trading212 trade_republic])
+
+    { "sophtron" => sophtron_items_path, "trading212" => trading212_items_path,
+      "trade_republic" => trade_republic_items_path }.each do |key, create_path|
+      get connect_form_settings_providers_url(provider_key: key)
+      assert_response :success
+      assert_select "form[action=?]", create_path, { count: 0 }, "#{key} still offers a create form"
+    end
+
+    get connect_form_settings_providers_url(provider_key: "sophtron")
+    assert_includes response.body, I18n.t("connectors.disabled")
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
+  test "a switched-off connector stays listed for a family that has a connection through it" do
+    Provider::ConnectorAvailability.update!(Provider::ConnectorAvailability.keys - %w[wise])
+
+    get settings_providers_url
+
+    assert_response :success
+    assert_select "details#wise-connection"
+  ensure
+    Setting.enabled_connectors = nil
+  end
+
   test "lists active Wise and CoinSpot connections under your connections" do
     get settings_providers_url
 

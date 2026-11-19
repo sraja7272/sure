@@ -37,4 +37,10 @@ class TradeRepublic::AccountEditorComponent < ApplicationComponent
   def qr_code_svg_for(item)
     @qr_code_svg if item == @qr_login_auto_poll_item
   end
+
+  # A super admin can switch the connector off; then the editor keeps managing
+  # existing connections but offers no form for a new one.
+  def offer_new_connection?
+    Provider::ConnectorAvailability.enabled?("trade_republic")
+  end
 end

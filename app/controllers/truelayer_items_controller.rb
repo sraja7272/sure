@@ -1,4 +1,6 @@
 class TruelayerItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "truelayer", also: %i[connect]
   include SafeProviderRedirect
 
   # Consent URLs Sure builds itself are followed only on these hosts (or their

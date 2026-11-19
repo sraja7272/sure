@@ -1,4 +1,6 @@
 class SophtronItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "sophtron", also: %i[connect_institution]
   include SyncStats::Collector
 
   CONNECTION_STATUS_MAX_POLLS = 6

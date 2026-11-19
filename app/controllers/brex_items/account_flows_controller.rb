@@ -1,4 +1,6 @@
 class BrexItems::AccountFlowsController < ApplicationController
+  include ConnectorGated
+  gate_connector "brex"
   before_action :require_admin!
 
   def preload_accounts

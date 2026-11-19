@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class WiseItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "wise", also: %i[select_profiles link_profiles]
   before_action :set_wise_item, only: [ :show, :edit, :update, :destroy, :sync, :setup_accounts, :complete_account_setup, :generate_sca_keypair ]
   before_action :require_admin!, except: [ :index ]
 

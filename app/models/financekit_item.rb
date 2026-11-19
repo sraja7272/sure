@@ -71,6 +71,7 @@ class FinancekitItem < ApplicationRecord
     family.with_lock do
       lock!
       Financekit.require!(%w[pending_mapping repair_required].include?(status), "activation_conflict", 409)
+      Financekit.require!(activation_allowed_by_switch?, "connector_disabled", 403)
       Financekit.require!(!pending_account_setup?, "account_setup_required", 409)
       mappings = selected_accounts.includes(financekit_account_lineage: :account).to_a
       Financekit.require!(mappings.all?(&:account), "account_setup_required", 409)
@@ -89,6 +90,17 @@ class FinancekitItem < ApplicationRecord
         next_sequence: 1, predecessor_digest: nil)
     end
     token
+  end
+
+  # While a super admin has FinanceKit switched off, only repair may activate:
+  # re-activating this item, or replacing a connection that is still live when
+  # the replacement activates. Checked here as well as at enrollment because
+  # two enrollments can name the same live connection.
+  def activation_allowed_by_switch?
+    return true if Provider::ConnectorAvailability.enabled?("financekit")
+    return true unless status == "pending_mapping"
+
+    replaces_financekit_item&.status.in?(%w[active repair_required]) || false
   end
 
   def repair!

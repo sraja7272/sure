@@ -1,4 +1,6 @@
 class SnaptradeItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "snaptrade", also: %i[connect]
   PERMITTED_OAUTH_SCOPES = %w[read].freeze
   # RFC 8628 §3.5: the authorization server is telling us to keep waiting, not
   # that anything went wrong.
@@ -206,6 +208,8 @@ class SnaptradeItemsController < ApplicationController
       return
     end
 
+    return unless snaptrade_connection_allowed?
+
     snaptrade_item = if params[:item_id].present?
       Current.family.snaptrade_items.find(params[:item_id])
     else
@@ -297,6 +301,8 @@ class SnaptradeItemsController < ApplicationController
   def start_oauth_device_flow
     assign_device_flow_context
     return render_device_flow_unconfigured unless Provider::Snaptrade.oauth_configured?
+
+    return unless snaptrade_connection_allowed?
 
     @snaptrade_item = if params[:item_id].present?
       Current.family.snaptrade_items.find(params[:item_id])
@@ -500,6 +506,23 @@ class SnaptradeItemsController < ApplicationController
   end
 
   private
+    # Re-authorizing an existing connection stays allowed when SnapTrade is
+    # switched off; starting a new one does not. The check is on the item the
+    # request would authorize, so an unfinished item can't ride on another
+    # item's connection.
+    def snaptrade_connection_allowed?
+      return true if Provider::ConnectorAvailability.enabled?("snaptrade")
+
+      item = if params[:item_id].present?
+        Current.family.snaptrade_items.find_by(id: params[:item_id])
+      else
+        current_snaptrade_item
+      end
+      return true if item&.existing_connection?
+
+      require_connector_enabled!("snaptrade")
+      !performed?
+    end
 
     def set_snaptrade_item
       @snaptrade_item = Current.family.snaptrade_items.find(params[:id])

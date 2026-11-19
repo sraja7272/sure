@@ -3,6 +3,8 @@
 # through the dialogs in app/views/monobank_items. There is deliberately no
 # index/show/new/edit action: nothing links to them and they would have no template.
 class MonobankItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "monobank"
   before_action :set_monobank_item, only: [ :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]
   before_action :require_admin!, only: [
     :create, :preload_accounts, :select_accounts, :link_accounts,

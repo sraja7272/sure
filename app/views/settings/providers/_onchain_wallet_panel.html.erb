@@ -17,13 +17,15 @@
   <% end %>
 
   <div class="flex flex-wrap items-center gap-2">
-    <%= render DS::Link.new(
-          text: t("settings.providers.onchain_wallet_panel.add_wallet"),
-          icon: "plus",
-          variant: "primary",
-          href: new_wallet_onchain_wallet_items_path,
-          frame: :modal
-        ) %>
+    <% if connector_enabled?("onchain_wallet") %>
+      <%= render DS::Link.new(
+            text: t("settings.providers.onchain_wallet_panel.add_wallet"),
+            icon: "plus",
+            variant: "primary",
+            href: new_wallet_onchain_wallet_items_path,
+            frame: :modal
+          ) %>
+    <% end %>
 
     <% if connection.present? %>
       <%= render DS::Link.new(

@@ -8,6 +8,7 @@ en:
       ai_prompts_label: AI Prompts
       auto_matches_label: Auto Matches
       classifier_label: Classifier
+      connectors_label: Connectors
       background_jobs_label: Background jobs
       api_key_label: API Keys
       payment_label: Payment

@@ -1,4 +1,6 @@
 class UpItemsController < ApplicationController
+  include ConnectorGated
+  gate_connector "up"
   before_action :set_up_item, only: [ :show, :edit, :update, :destroy, :sync, :setup_accounts, :complete_account_setup ]
   before_action :require_admin!, only: [
     :new, :create, :preload_accounts, :select_accounts, :link_accounts,

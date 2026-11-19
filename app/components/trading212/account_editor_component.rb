@@ -38,6 +38,12 @@ class Trading212::AccountEditorComponent < ApplicationComponent
     helpers.t("settings.providers.trading212_panel.#{key}", **options)
   end
 
+
+  # A super admin can switch the connector off; then the editor keeps managing
+  # existing connections but offers no form for a new one.
+  def offer_new_connection?
+    Provider::ConnectorAvailability.enabled?("trading212")
+  end
   private
 
     def preload_account_counts

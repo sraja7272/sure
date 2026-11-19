@@ -7,6 +7,10 @@ class MercuryItemsControllerTest < ActionDispatch::IntegrationTest
     sign_in users(:family_admin)
     Rails.cache.clear
     SyncJob.stubs(:perform_later)
+    # These tests mock Rails.cache strictly. Checking the connector switch
+    # reads an instance setting through that cache, so keep the switch out of
+    # the way; ConnectorGatedTest covers it.
+    Provider::ConnectorAvailability.stubs(:enabled?).returns(true)
 
     @family = families(:dylan_family)
     @existing_item = mercury_items(:one)

@@ -92,8 +92,20 @@ class Provider::Factory
     # @return [Array<Hash>] Array of connection configurations from all providers
     def connection_configs_for_account_type(account_type:, family:)
       adapters_for_account_type(account_type).flat_map do |adapter_class|
+        next [] unless connector_enabled?(adapter_class)
+
         adapter_class.connection_configs(family: family)
       end
+    end
+
+    # Whether a super admin has left this adapter's connector switched on.
+    def connector_enabled?(adapter_class)
+      provider_type = registry.key(adapter_class)
+      return true unless provider_type
+
+      Provider::ConnectorAvailability.enabled?(
+        Provider::ConnectorAvailability.key_for_provider_type(provider_type)
+      )
     end
 
     # Clear all registered adapters (useful for testing)

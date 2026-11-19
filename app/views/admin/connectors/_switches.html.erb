@@ -1,0 +1,19 @@
+<div id="connector_switches" class="space-y-4">
+  <% @connector_groups.each do |kind, connectors| %>
+    <%= settings_section title: connector_kind_title(kind) do %>
+      <div class="divide-y divide-subdued">
+        <% connectors.each do |connector| %>
+          <div class="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+            <label for="connector_<%= connector.key %>" class="font-medium text-primary"><%= connector.name %></label>
+            <%= render DS::Toggle.new(
+              id: "connector_#{connector.key}",
+              name: "connectors[#{connector.key}]",
+              checked: @enabled_keys.include?(connector.key),
+              data: { action: "change->connector-switches#save" }
+            ) %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+</div>

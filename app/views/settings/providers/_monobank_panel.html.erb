@@ -90,31 +90,33 @@
   <% end %>
 
   <% monobank_item = Current.family.monobank_items.build(name: t("monobank_items.provider_panel.default_connection_name")) %>
-  <% if active_items.any? %>
-    <%= render "settings/providers/add_connection_heading", label: t("monobank_items.provider_panel.add_connection") %>
-  <% end %>
+  <% if connector_enabled?("monobank") %>
+    <% if active_items.any? %>
+      <%= render "settings/providers/add_connection_heading", label: t("monobank_items.provider_panel.add_connection") %>
+    <% end %>
 
-  <%= styled_form_with model: monobank_item,
-                       url: monobank_items_path,
-                       scope: :monobank_item,
-                       method: :post,
-                       data: { turbo: true },
-                       class: "space-y-3" do |form| %>
-    <%= form.text_field :name,
-                        label: t("monobank_items.provider_panel.connection_name_label"),
-                        placeholder: t("monobank_items.provider_panel.connection_name_placeholder") %>
+    <%= styled_form_with model: monobank_item,
+                         url: monobank_items_path,
+                         scope: :monobank_item,
+                         method: :post,
+                         data: { turbo: true },
+                         class: "space-y-3" do |form| %>
+      <%= form.text_field :name,
+                          label: t("monobank_items.provider_panel.connection_name_label"),
+                          placeholder: t("monobank_items.provider_panel.connection_name_placeholder") %>
 
-    <%= form.text_field :access_token,
-                        label: t("monobank_items.provider_panel.access_token_label"),
-                        placeholder: t("monobank_items.provider_panel.access_token_placeholder"),
-                        type: :password,
-                        value: nil %>
+      <%= form.text_field :access_token,
+                          label: t("monobank_items.provider_panel.access_token_label"),
+                          placeholder: t("monobank_items.provider_panel.access_token_placeholder"),
+                          type: :password,
+                          value: nil %>
 
-    <div class="flex justify-end">
-      <%= render DS::Button.new(
-        text: t("monobank_items.provider_panel.add_connection"),
-        type: "submit"
-      ) %>
-    </div>
+      <div class="flex justify-end">
+        <%= render DS::Button.new(
+          text: t("monobank_items.provider_panel.add_connection"),
+          type: "submit"
+        ) %>
+      </div>
+    <% end %>
   <% end %>
 </div>

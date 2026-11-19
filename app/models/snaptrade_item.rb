@@ -33,6 +33,14 @@ class SnaptradeItem < ApplicationRecord
   scope :ordered, -> { order(created_at: :desc) }
   scope :needs_update, -> { where(status: :requires_update) }
 
+  # Whether this item is a connection the family already has, as opposed to an
+  # authorization that was started and never finished. Legacy items connected
+  # before OAuth have no token but do have linked accounts. The token is read
+  # as stored, without decrypting, so an undecryptable value can't raise here.
+  def existing_connection?
+    read_attribute_before_type_cast(:oauth_access_token).present? || snaptrade_accounts.exists?
+  end
+
   def import_latest_snaptrade_data(sync: nil)
     provider = snaptrade_provider
     unless provider
